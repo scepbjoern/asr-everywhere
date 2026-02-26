@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from asr_everywhere.providers.base import ASRProvider
+from asr_everywhere.providers.huggingface_provider import HuggingfaceProvider
 from asr_everywhere.providers.openai_compat import OpenAICompatProvider
 from asr_everywhere.providers.openai_provider import OpenAIProvider
 
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 PROVIDERS: dict[str, type[ASRProvider] | callable] = {
     "openai": OpenAIProvider,
     "together": lambda: OpenAICompatProvider("together"),
-    "huggingface": lambda: OpenAICompatProvider("huggingface"),
+    "huggingface": HuggingfaceProvider,
     "local": lambda: OpenAICompatProvider("local"),
 }
 
