@@ -4,27 +4,18 @@ These tests verify the fundamental behavior of Phase 1 components.
 Any future changes should not break these tests.
 """
 
-import io
 from unittest import mock
 
 import numpy as np
 import pytest
 
 from asr_everywhere.audio_recorder import AudioRecorder
-from asr_everywhere.config import (
-    ASRConfig,
-    AudioConfig,
-    Config,
-    HotkeyConfig,
-    load_config,
-    save_config,
-)
+from asr_everywhere.config import load_config, save_config
 from asr_everywhere.providers.base import TranscriptionResult
 from asr_everywhere.providers.openai_provider import OpenAIProvider
 from asr_everywhere.providers.registry import get_provider, list_providers
 from asr_everywhere.text_inserter import TextInserter
 from asr_everywhere.transcription_pipeline import TranscriptionPipeline
-
 
 # ============================================================================
 # Phase 1: Configuration Regression Tests
@@ -190,8 +181,10 @@ class TestTextInserterRegression:
         """Inserter must restore clipboard after insertion."""
         inserter = TextInserter()
 
-        with mock.patch("asr_everywhere.text_inserter.pyperclip") as mock_clip, \
-             mock.patch("asr_everywhere.text_inserter.time.sleep"):
+        with (
+            mock.patch("asr_everywhere.text_inserter.pyperclip") as mock_clip,
+            mock.patch("asr_everywhere.text_inserter.time.sleep"),
+        ):
             mock_clip.paste.return_value = "saved content"
 
             inserter.save_clipboard()
@@ -209,8 +202,10 @@ class TestTextInserterRegression:
         """Inserter must return True for valid text insertion."""
         inserter = TextInserter()
 
-        with mock.patch("asr_everywhere.text_inserter.pyperclip") as mock_clip, \
-             mock.patch("asr_everywhere.text_inserter.time.sleep"):
+        with (
+            mock.patch("asr_everywhere.text_inserter.pyperclip") as mock_clip,
+            mock.patch("asr_everywhere.text_inserter.time.sleep"),
+        ):
             mock_clip.paste.return_value = "old"
 
             result = inserter.insert_text("test text", restore_clipboard=False)
@@ -346,11 +341,12 @@ class TestIntegrationRegression:
         )
 
         # Mock the audio stream
-        with mock.patch("asr_everywhere.audio_recorder.sd") as mock_sd, \
-             mock.patch("asr_everywhere.transcription_pipeline.get_provider") as mock_get, \
-             mock.patch("asr_everywhere.text_inserter.pyperclip") as mock_clip, \
-             mock.patch("asr_everywhere.text_inserter.time.sleep"):
-
+        with (
+            mock.patch("asr_everywhere.audio_recorder.sd") as mock_sd,
+            mock.patch("asr_everywhere.transcription_pipeline.get_provider") as mock_get,
+            mock.patch("asr_everywhere.text_inserter.pyperclip") as mock_clip,
+            mock.patch("asr_everywhere.text_inserter.time.sleep"),
+        ):
             # Setup audio stream mock
             mock_stream = mock.MagicMock()
             mock_sd.InputStream.return_value = mock_stream
@@ -378,3 +374,98 @@ class TestIntegrationRegression:
             # Verify workflow completed
             mock_provider.transcribe.assert_called_once()
             mock_clip.copy.assert_called()
+
+
+# ============================================================================
+# Phase 2: Multi-Provider Regression Tests
+# ============================================================================
+
+
+class TestMultiProviderRegression:
+    """Regression tests for multi-provider support."""
+
+    def test_registry_contains_together_provider(self):
+        """Registry must contain together provider."""
+        providers = list_providers()
+        assert "together" in providers
+
+    def test_registry_contains_huggingface_provider(self):
+        """Registry must contain huggingface provider."""
+        providers = list_providers()
+        assert "huggingface" in providers
+
+    def test_registry_contains_local_provider(self):
+        """Registry must contain local provider."""
+        providers = list_providers()
+        assert "local" in providers
+
+    def test_compat_provider_returns_transcription_result(self, valid_config):
+        """OpenAI-compatible providers must return TranscriptionResult."""
+        from asr_everywhere.config import ProviderConfig
+        from asr_everywhere.providers.openai_compat import OpenAICompatProvider
+
+        valid_config.asr.providers["together"] = ProviderConfig(
+            api_key="test-key",
+            base_url="https://api.together.xyz/v1",
+        )
+        valid_config.asr.provider = "together"
+
+        provider = OpenAICompatProvider("together")
+
+        with mock.patch("asr_everywhere.providers.openai_compat.OpenAI") as mock_openai:
+            mock_client = mock.MagicMock()
+            mock_openai.return_value = mock_client
+
+            mock_response = mock.MagicMock()
+            mock_response.text = "Test from Together"
+            mock_client.audio.transcriptions.create.return_value = mock_response
+
+            result = provider.transcribe(b"audio", valid_config.asr)
+
+            assert isinstance(result, TranscriptionResult)
+            assert result.text == "Test from Together"
+
+    def test_config_has_default_providers(self, default_config):
+        """Default config must have provider configurations."""
+        # After loading, providers should be populated
+        from asr_everywhere.config import _get_default_providers
+
+        providers = _get_default_providers()
+        assert "openai" in providers
+        assert "together" in providers
+        assert "huggingface" in providers
+        assert "local" in providers
+
+    def test_asr_config_get_api_key_uses_provider_config(self):
+        """ASRConfig.get_api_key must return provider-specific key."""
+        from asr_everywhere.config import ASRConfig, ProviderConfig
+
+        config = ASRConfig(
+            provider="together",
+            api_key="fallback-key",
+            providers={
+                "together": ProviderConfig(
+                    api_key="together-key",
+                    base_url="https://api.together.xyz/v1",
+                )
+            },
+        )
+
+        assert config.get_api_key() == "together-key"
+
+    def test_asr_config_get_base_url_uses_provider_config(self):
+        """ASRConfig.get_base_url must return provider-specific URL."""
+        from asr_everywhere.config import ASRConfig, ProviderConfig
+
+        config = ASRConfig(
+            provider="together",
+            base_url="https://api.openai.com/v1",
+            providers={
+                "together": ProviderConfig(
+                    api_key="key",
+                    base_url="https://api.together.xyz/v1",
+                )
+            },
+        )
+
+        assert config.get_base_url() == "https://api.together.xyz/v1"

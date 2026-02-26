@@ -6,7 +6,13 @@ Pay special attention to naming of existing utils types and models. Import from 
 
 ## Feature Description
 
-Implement a tkinter-based Settings GUI window accessible from the System Tray, enabling users to configure ASR providers, API keys, hotkeys, audio devices, and language settings without manually editing JSON. This phase also extends the provider system to support OpenAI-compatible endpoints (Together.ai, Hugging Face, OpenRouter, local APIs).
+Implement a tkinter-based Settings GUI window accessible from the System Tray, enabling users to configure ASR providers, API keys, hotkeys, audio devices, and language settings without manually editing JSON. This phase also extends the provider system to support OpenAI-compatible endpoints (Together.ai, Hugging Face, local APIs).
+
+**New Features Added:**
+- **Model Configuration:** Models are now configurable per provider in `config.json` with price per audio hour
+- **Notification Toggle:** Optional notification after successful transcription (configurable in settings)
+- **Tray Model Display:** Current model and price shown in tray icon right-click menu
+- **OpenRouter Removed:** OpenRouter provider removed (no ASR models available)
 
 ## User Story
 

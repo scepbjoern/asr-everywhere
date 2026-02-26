@@ -6,15 +6,46 @@
   },
   "asr": {
     "provider": "openai",
-    "model": "whisper-1",
+    "model": "gpt-4o-transcribe",
     "language": "auto",
-    "api_key": "YOUR_OPENAI_API_KEY_HERE",
-    "base_url": "https://api.openai.com/v1"
+    "api_key": "",
+    "base_url": "https://api.openai.com/v1",
+    "providers": {
+      "openai": {
+        "api_key": "",
+        "base_url": "https://api.openai.com/v1",
+        "models": [
+          {"name": "gpt-4o-transcribe", "price_per_hour": "0.36 USD"},
+          {"name": "gpt-4o-mini-transcribe", "price_per_hour": "0.18 USD"}
+        ]
+      },
+      "together": {
+        "api_key": "",
+        "base_url": "https://api.together.xyz/v1",
+        "models": [
+          {"name": "Whisper Large v3", "price_per_hour": "0.09 USD"}
+        ]
+      },
+      "huggingface": {
+        "api_key": "",
+        "base_url": "https://api-inference.huggingface.co/v1",
+        "models": [
+          {"name": "openai/whisper-large-v3-turbo", "price_per_hour": "in Plus-Plan enthalten"},
+          {"name": "openai/whisper-large-v3", "price_per_hour": "in Plus-Plan enthalten"}
+        ]
+      },
+      "local": {
+        "api_key": "",
+        "base_url": "http://localhost:11434/v1",
+        "models": []
+      }
+    }
   },
   "audio": {
     "device": null,
     "sample_rate": 16000,
     "channels": 1
   },
-  "clipboard_restore": true
+  "clipboard_restore": true,
+  "show_notification": true
 }

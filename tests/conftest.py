@@ -1,8 +1,6 @@
 """Shared pytest fixtures for regression testing."""
 
 import os
-import tempfile
-from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -13,7 +11,6 @@ from asr_everywhere.config import (
     Config,
     HotkeyConfig,
 )
-
 
 # ============================================================================
 # Config Fixtures
@@ -49,7 +46,7 @@ def temp_config_dir(tmp_path):
     """Create a temporary config directory with isolated APPDATA."""
     config_dir = tmp_path / "asr-everywhere"
     config_dir.mkdir(parents=True, exist_ok=True)
-    
+
     with mock.patch.dict(os.environ, {"APPDATA": str(tmp_path)}):
         yield tmp_path
 

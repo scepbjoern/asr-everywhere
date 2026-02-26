@@ -47,20 +47,28 @@ class TranscriptionPipeline:
             return
 
         if self._recorder.is_recording:
-            self._stop_and_transcribe()
+            self.stop_and_transcribe()
         else:
-            self._start_recording()
+            self.start_recording()
 
-    def _start_recording(self) -> None:
+    def start_recording(self) -> None:
         """Start audio recording."""
         from asr_everywhere.ui.tray import TrayState
 
-        self._tray.set_state(TrayState.RECORDING)
-        self._recorder.start_recording()
+        if self._processing:
+            logger.info("Ignoring start during processing")
+            return
 
-    def _stop_and_transcribe(self) -> None:
+        if not self._recorder.is_recording:
+            self._tray.set_state(TrayState.RECORDING)
+            self._recorder.start_recording()
+
+    def stop_and_transcribe(self) -> None:
         """Stop recording and process audio."""
         from asr_everywhere.ui.tray import TrayState
+
+        if not self._recorder.is_recording:
+            return
 
         # Stop recording
         audio_data = self._recorder.stop_recording()
@@ -92,12 +100,13 @@ class TranscriptionPipeline:
                 )
 
                 if success:
-                    self._tray.show_notification(
-                        "Transcription Complete",
-                        f"Inserted: {result.text[:50]}..."
-                        if len(result.text) > 50
-                        else result.text,
-                    )
+                    if self._config.show_notification:
+                        self._tray.show_notification(
+                            "Transcription Complete",
+                            f"Inserted: {result.text[:50]}..."
+                            if len(result.text) > 50
+                            else result.text,
+                        )
                 else:
                     self._tray.show_notification(
                         "Insertion Failed",

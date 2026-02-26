@@ -30,6 +30,7 @@ class TrayIcon:
         on_quit: Callable[[], None],
         on_toggle_recording: Callable[[], None] | None = None,
         on_settings: Callable[[], None] | None = None,
+        get_model_info: Callable[[], tuple[str, str]] | None = None,
     ) -> None:
         """Initialize tray icon.
 
@@ -37,10 +38,12 @@ class TrayIcon:
             on_quit: Callback for quit action
             on_toggle_recording: Callback to start/stop recording (optional)
             on_settings: Callback for settings action (optional for Phase 1)
+            get_model_info: Callback returning (model_name, price) tuple (optional)
         """
         self._on_quit = on_quit
         self._on_toggle_recording = on_toggle_recording
         self._on_settings = on_settings
+        self._get_model_info = get_model_info
         self._state = TrayState.IDLE
         self._icon: pystray.Icon | None = None
         self._thread: threading.Thread | None = None
@@ -82,13 +85,28 @@ class TrayIcon:
                 lambda item: None,
                 enabled=False,
             ),
-            Menu.SEPARATOR,
         ]
+
+        # Add model info if available
+        if self._get_model_info:
+            items.append(
+                MenuItem(
+                    lambda item: self._get_model_text(),
+                    lambda item: None,
+                    enabled=False,
+                )
+            )
+
+        items.append(Menu.SEPARATOR)
 
         if self._on_toggle_recording:
             items.append(
                 MenuItem(
-                    lambda item: "Stop Recording" if self._state == TrayState.RECORDING else "Start Recording",
+                    lambda item: (
+                        "Stop Recording"
+                        if self._state == TrayState.RECORDING
+                        else "Start Recording"
+                    ),
                     lambda item: self._on_toggle_recording(),
                 )
             )
@@ -105,6 +123,16 @@ class TrayIcon:
 
         return Menu(*items)
 
+    def _get_model_text(self) -> str:
+        """Get formatted model info text for menu."""
+        if not self._get_model_info:
+            return ""
+        model_name, model_price = self._get_model_info()
+        if not model_name:
+            return ""
+        price_text = f" ({model_price})" if model_price else ""
+        return f"Model: {model_name}{price_text}"
+
     def set_state(self, state: TrayState) -> None:
         """Update tray icon state.
 
@@ -118,6 +146,11 @@ class TrayIcon:
             # Update menu to show current status
             self._icon.update_menu()
         logger.debug(f"Tray state changed to: {state.value}")
+
+    def refresh_menu(self) -> None:
+        """Refresh the tray menu to show updated model info."""
+        if self._icon:
+            self._icon.update_menu()
 
     def show_notification(self, title: str, message: str) -> None:
         """Show a notification balloon.

@@ -4,7 +4,7 @@
 
 **ASR Everywhere** is a lightweight Windows desktop application that enables system-wide voice-to-text dictation. Inspired by [Aqua Voice](https://aquavoice.com), it allows users to press a configurable global hotkey (e.g. `WIN+U`) to start recording, press it again to stop, and have the transcribed text automatically inserted at the current cursor position in any application. The transcribed text is optionally copied to the clipboard as well.
 
-The application supports multiple ASR backends — including cloud inference providers (Together.ai, Hugging Face, OpenRouter), the OpenAI API directly (for models like `gpt-4o-transcribe`), and local OpenAI-compatible APIs (e.g. LibreChat, Ollama) — giving users full flexibility over accuracy, cost, privacy, and latency. An optional LLM post-processing step can clean up, reformat, or transform the transcribed text before insertion.
+The application supports multiple ASR backends — including cloud inference providers (Together.ai, Hugging Face), the OpenAI API directly (for models like `gpt-4o-transcribe`), and local OpenAI-compatible APIs (e.g. LibreChat, Ollama) — giving users full flexibility over accuracy, cost, privacy, and latency. An optional LLM post-processing step can clean up, reformat, or transform the transcribed text before insertion.
 
 **MVP Goal:** Deliver a fully functional, pip-installable Python application for Windows that supports multiple ASR providers, configurable hotkeys (toggle and push-to-talk), cursor-position text insertion, clipboard integration, optional LLM post-processing, a dictionary for custom terms, microphone selection, language auto-detection (German & English), and a minimal System Tray UI with a settings window.
 
@@ -64,10 +64,9 @@ The application supports multiple ASR backends — including cloud inference pro
 - ✅ OpenAI Whisper API / gpt-4o-transcribe (direct OpenAI API)
 - ✅ Together.ai (OpenAI-compatible API)
 - ✅ Hugging Face Inference API (OpenAI-compatible API)
-- ✅ OpenRouter (OpenAI-compatible API)
 - ✅ Local APIs via OpenAI-compatible endpoints (LibreChat, Ollama, etc.)
 - ✅ Provider selection and per-provider API key configuration in settings
-- ✅ Model selection per provider
+- ✅ Model selection per provider with configurable model list and pricing display
 
 ### In Scope — Language
 - ✅ German and English support
@@ -86,6 +85,9 @@ The application supports multiple ASR backends — including cloud inference pro
 - ✅ Settings GUI window (minimal, functional)
 - ✅ JSON configuration file in `%APPDATA%/asr-everywhere/`
 - ✅ API keys stored in JSON config (unencrypted, user responsibility)
+- ✅ Configurable model list per provider with price per audio hour
+- ✅ Current model and price displayed in tray menu
+- ✅ Optional notification after successful transcription (configurable)
 
 ### Out of Scope (Future)
 - ❌ History / transcription log
@@ -195,7 +197,7 @@ asr-everywhere/
 │       │   ├── __init__.py
 │       │   ├── base.py              # Abstract ASR & LLM provider
 │       │   ├── openai_provider.py   # OpenAI direct (Whisper, gpt-4o-transcribe)
-│       │   ├── openai_compat.py     # Generic OpenAI-compatible (Together, HF, OpenRouter, local)
+│       │   ├── openai_compat.py     # Generic OpenAI-compatible (Together, HF, local)
 │       │   └── registry.py          # Provider discovery & instantiation
 │       ├── llm/
 │       │   ├── __init__.py
@@ -273,7 +275,6 @@ class ASRProvider(ABC):
 | **OpenAI Direct** | OpenAI API | `whisper-1`, `gpt-4o-transcribe` | Native OpenAI endpoint |
 | **Together.ai** | OpenAI-compatible | Whisper variants, custom models | `base_url` override |
 | **Hugging Face** | OpenAI-compatible | Whisper variants | Inference API |
-| **OpenRouter** | OpenAI-compatible | Various ASR models | `base_url` override |
 | **Local (Ollama, LibreChat)** | OpenAI-compatible | User-configured | `base_url` = `http://localhost:...` |
 
 The **OpenAI-compatible** providers all share one implementation class (`OpenAICompatProvider`) with configurable `base_url` and `api_key`.
@@ -375,7 +376,6 @@ A tkinter-based settings window accessible from the System Tray context menu. Se
 | OpenAI API | Direct, for Whisper / gpt-4o-transcribe |
 | Together.ai | OpenAI-compatible endpoint |
 | Hugging Face Inference | OpenAI-compatible endpoint |
-| OpenRouter | OpenAI-compatible endpoint |
 | Ollama (local) | OpenAI-compatible endpoint on localhost |
 | LibreChat (local) | OpenAI-compatible endpoint on localhost |
 
@@ -416,10 +416,6 @@ A tkinter-based settings window accessible from the System Tray context menu. Se
       "huggingface": {
         "api_key": "hf_...",
         "base_url": "https://api-inference.huggingface.co/v1"
-      },
-      "openrouter": {
-        "api_key": "sk-or-...",
-        "base_url": "https://openrouter.ai/api/v1"
       },
       "local": {
         "api_key": "",
@@ -542,7 +538,7 @@ A user can install the application via `pip install`, configure an ASR provider 
 
 **Deliverables:**
 - ✅ ASR provider abstraction layer (base class + registry)
-- ✅ OpenAI-compatible provider (Together.ai, HF, OpenRouter, local)
+- ✅ OpenAI-compatible provider (Together.ai, HF, local)
 - ✅ Settings window (tkinter): provider selection, API keys, hotkey config
 - ✅ Configurable hotkeys (toggle + push-to-talk)
 - ✅ Dual hotkey support (restore clipboard vs. keep)
@@ -634,7 +630,6 @@ A user can install the application via `pip install`, configure an ASR provider 
 | OpenAI Audio API | https://platform.openai.com/docs/guides/speech-to-text |
 | Together.ai API | https://docs.together.ai |
 | Hugging Face Inference | https://huggingface.co/docs/api-inference |
-| OpenRouter API | https://openrouter.ai/docs |
 | Ollama API | https://github.com/ollama/ollama/blob/main/docs/openai.md |
 
 ### Inspiration
