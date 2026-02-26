@@ -46,18 +46,53 @@ After completing implementation tasks:
 - Follow the testing approach outlined
 - Ensure tests cover edge cases
 
+### 3.5. Extend Regression Test Suite (CRITICAL)
+
+**IMPORTANT**: For every new feature/phase, extend the regression test suite:
+
+- Identify core functionality that must remain stable
+- Add regression tests to `tests/test_regression.py`
+- Use appropriate test class: `TestConfigRegression`, `TestAudioRecorderRegression`, etc.
+- Or create new regression test class for new components
+- Ensure existing regression tests still pass
+- Run: `python -m pytest tests/test_regression.py -v`
+
+**Regression Test Principles:**
+- Test default values and core behavior
+- Test state transitions and error handling
+- Test integration workflows
+- Mark with `@pytest.mark.regression` decorator
+
 ### 4. Run Validation Commands
 
 Execute ALL validation commands from the plan in order:
 
+**Level 1 - Linting & Formatting:**
 ```bash
-# Run each command exactly as specified in plan
+python -m ruff check src/ tests/
+python -m ruff format --check src/ tests/
+```
+
+**Level 2 - Unit Tests:**
+```bash
+python -m pytest tests/ -v
+```
+
+**Level 3 - Regression Tests (MANDATORY):**
+```bash
+python -m pytest tests/test_regression.py -v
+```
+
+**Level 4 - Coverage Report:**
+```bash
+python -m pytest tests/ -v --cov=src/asr_everywhere --cov-report=term-missing
 ```
 
 If any command fails:
 - Fix the issue
 - Re-run the command
 - Continue only when it passes
+- REGRESSION TEST FAILURES MUST BE FIXED BEFORE PROCEEDING
 
 ### 5. Final Verification
 
@@ -65,9 +100,11 @@ Before completing:
 
 - ✅ All tasks from plan completed
 - ✅ All tests created and passing
+- ✅ **Regression tests extended and passing**
 - ✅ All validation commands pass
 - ✅ Code follows project conventions
 - ✅ Documentation added/updated as needed
+- ✅ No regressions in existing functionality
 
 ## Output Report
 

@@ -259,6 +259,7 @@ So that <benefit/value>
 - Implement unit tests for each component
 - Create integration tests for feature workflow
 - Add edge case tests
+- **Extend regression test suite for new functionality**
 - Validate against acceptance criteria
 
 ---
@@ -304,6 +305,35 @@ Design unit tests with fixtures and assertions following existing testing approa
 
 <Scope and requirements based on project standards>
 
+### Regression Tests (MANDATORY)
+
+**Every new feature MUST extend the regression test suite:**
+
+- Identify core functionality that must remain stable across future phases
+- Add tests to `tests/test_regression.py` or create new test class
+- Use existing fixtures from `tests/conftest.py`
+- Test:
+  - Default values and configuration
+  - State transitions and lifecycle
+  - Error handling and edge cases
+  - Integration workflows
+- Mark with `@pytest.mark.regression`
+- Ensure all existing regression tests still pass
+
+**Regression Test Template:**
+```python
+class TestNewFeatureRegression:
+    """Regression tests for <feature> functionality."""
+    
+    def test_default_behavior(self, default_config):
+        """Ensure default <behavior> remains stable."""
+        # Test implementation
+    
+    def test_state_transition(self, mock_components):
+        """Ensure <state> transitions work correctly."""
+        # Test implementation
+```
+
 ### Edge Cases
 
 <List specific edge cases that must be tested for this feature>
@@ -327,6 +357,14 @@ Execute every command to ensure zero regressions and 100% feature correctness.
 ### Level 3: Integration Tests
 
 <Project-specific integration test commands>
+
+### Level 4: Regression Tests (MANDATORY)
+
+```bash
+python -m pytest tests/test_regression.py -v
+```
+
+**All regression tests must pass before proceeding.**
 
 ### Level 4: Manual Validation
 
