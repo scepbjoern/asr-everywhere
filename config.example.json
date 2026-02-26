@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "hotkey": {
+    "dictate": "win+ctrl+a",
+    "mode": "toggle"
+  },
+  "asr": {
+    "provider": "openai",
+    "model": "whisper-1",
+    "language": "auto",
+    "api_key": "YOUR_OPENAI_API_KEY_HERE",
+    "base_url": "https://api.openai.com/v1"
+  },
+  "audio": {
+    "device": null,
+    "sample_rate": 16000,
+    "channels": 1
+  },
+  "clipboard_restore": true
+}
