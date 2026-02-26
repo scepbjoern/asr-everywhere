@@ -116,8 +116,8 @@ def _get_default_providers() -> dict[str, ProviderConfig]:
             api_key="",
             base_url="https://router.huggingface.co/v1",
             models=[
-                ModelConfig(name="openai/whisper-large-v3-turbo", price_per_hour="in Plus-Plan enthalten"),
-                ModelConfig(name="openai/whisper-large-v3", price_per_hour="in Plus-Plan enthalten"),
+                ModelConfig(name="hf-inference/openai/whisper-large-v3-turbo", price_per_hour="in Plus-Plan enthalten"),
+                ModelConfig(name="hf-inference/openai/whisper-large-v3", price_per_hour="in Plus-Plan enthalten"),
             ],
         ),
         "local": ProviderConfig(

@@ -30,8 +30,8 @@
         "api_key": "",
         "base_url": "https://router.huggingface.co/v1",
         "models": [
-          {"name": "openai/whisper-large-v3-turbo", "price_per_hour": "in Plus-Plan enthalten"},
-          {"name": "openai/whisper-large-v3", "price_per_hour": "in Plus-Plan enthalten"}
+          {"name": "hf-inference/openai/whisper-large-v3-turbo", "price_per_hour": "in Plus-Plan enthalten"},
+          {"name": "hf-inference/openai/whisper-large-v3", "price_per_hour": "in Plus-Plan enthalten"}
         ]
       },
       "local": {
