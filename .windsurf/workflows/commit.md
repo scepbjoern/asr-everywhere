@@ -5,3 +5,5 @@ add the untracked and changed files
 Add an atomic commit message with an appropriate message
 
 add a tag such as "feat", "fix", "docs", etc. that reflects our work
+
+after commit, push to remote (sync)
