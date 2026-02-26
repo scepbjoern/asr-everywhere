@@ -31,6 +31,8 @@ class TrayIcon:
         on_toggle_recording: Callable[[], None] | None = None,
         on_settings: Callable[[], None] | None = None,
         get_model_info: Callable[[], tuple[str, str]] | None = None,
+        get_hotkey_mode: Callable[[], str] | None = None,
+        on_toggle_hotkey_mode: Callable[[], None] | None = None,
     ) -> None:
         """Initialize tray icon.
 
@@ -39,11 +41,15 @@ class TrayIcon:
             on_toggle_recording: Callback to start/stop recording (optional)
             on_settings: Callback for settings action (optional for Phase 1)
             get_model_info: Callback returning (model_name, price) tuple (optional)
+            get_hotkey_mode: Callback returning current hotkey mode (optional)
+            on_toggle_hotkey_mode: Callback to toggle hotkey mode (optional)
         """
         self._on_quit = on_quit
         self._on_toggle_recording = on_toggle_recording
         self._on_settings = on_settings
         self._get_model_info = get_model_info
+        self._get_hotkey_mode = get_hotkey_mode
+        self._on_toggle_hotkey_mode = on_toggle_hotkey_mode
         self._state = TrayState.IDLE
         self._icon: pystray.Icon | None = None
         self._thread: threading.Thread | None = None
@@ -113,6 +119,15 @@ class TrayIcon:
 
         if self._on_settings:
             items.append(MenuItem("Settings", lambda item: self._on_settings()))
+
+        # Add hotkey mode toggle if available
+        if self._get_hotkey_mode and self._on_toggle_hotkey_mode:
+            items.append(
+                MenuItem(
+                    lambda item: f"Mode: {'Push-to-Talk' if self._get_hotkey_mode() == 'push_to_talk' else 'Toggle'}",
+                    lambda item: self._on_toggle_hotkey_mode(),
+                )
+            )
 
         items.extend(
             [

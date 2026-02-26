@@ -73,6 +73,8 @@ class ASREverywhereApp:
                 on_toggle_recording=self._pipeline.toggle_recording,
                 on_settings=self._open_settings,
                 get_model_info=self._get_model_info,
+                get_hotkey_mode=lambda: self._config.hotkey.mode,
+                on_toggle_hotkey_mode=self._toggle_hotkey_mode,
             )
 
             # Link tray to pipeline
@@ -140,6 +142,34 @@ class ASREverywhereApp:
                     break
 
         return (model_name, model_price)
+
+    def _toggle_hotkey_mode(self) -> None:
+        """Toggle between push-to-talk and toggle mode."""
+        # Toggle mode
+        new_mode = "toggle" if self._config.hotkey.mode == "push_to_talk" else "push_to_talk"
+        self._config.hotkey.mode = new_mode
+
+        # Save config
+        save_config(self._config)
+
+        # Re-register hotkey with new mode
+        self._hotkey_manager.unregister_all()
+        if new_mode == "push_to_talk":
+            self._hotkey_manager.register_push_to_talk(
+                self._config.hotkey.dictate,
+                self._pipeline.start_recording,
+                self._pipeline.stop_and_transcribe,
+            )
+        else:
+            self._hotkey_manager.register_hotkey(
+                self._config.hotkey.dictate,
+                self._pipeline.toggle_recording,
+            )
+
+        # Refresh tray menu
+        self._tray.refresh_menu()
+
+        logger.info(f"Hotkey mode changed to: {new_mode}")
 
     def _open_settings(self) -> None:
         """Open settings window."""
