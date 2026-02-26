@@ -15,23 +15,23 @@
         "api_key": "",
         "base_url": "https://api.openai.com/v1",
         "models": [
-          {"name": "gpt-4o-transcribe", "price_per_hour": "0.36 USD"},
-          {"name": "gpt-4o-mini-transcribe", "price_per_hour": "0.18 USD"}
+          {"name": "gpt-4o-transcribe", "price_per_1m_tokens": "0.36 USD"},
+          {"name": "gpt-4o-mini-transcribe", "price_per_1m_tokens": "0.18 USD"}
         ]
       },
       "together": {
         "api_key": "",
         "base_url": "https://api.together.xyz/v1",
         "models": [
-          {"name": "Whisper Large v3", "price_per_hour": "0.09 USD"}
+          {"name": "openai/whisper-large-v3", "price_per_1m_tokens": "0.09 USD"}
         ]
       },
       "huggingface": {
         "api_key": "",
         "base_url": "https://router.huggingface.co/hf-inference",
         "models": [
-          {"name": "openai/whisper-large-v3-turbo", "price_per_hour": "in Plus-Plan enthalten"},
-          {"name": "openai/whisper-large-v3", "price_per_hour": "in Plus-Plan enthalten"}
+          {"name": "openai/whisper-large-v3-turbo", "price_per_1m_tokens": "in Plus-Plan enthalten"},
+          {"name": "openai/whisper-large-v3", "price_per_1m_tokens": "in Plus-Plan enthalten"}
         ]
       },
       "local": {
@@ -41,6 +41,47 @@
       }
     }
   },
+  "llm": {
+    "enabled": false,
+    "provider": "openai",
+    "model": "gpt-5-mini",
+    "custom_instructions": "",
+    "providers": {
+      "openai": {
+        "api_key": "",
+        "base_url": "https://api.openai.com/v1",
+        "models": [
+          {"name": "gpt-5-mini", "price_per_1m_tokens": "2.25 USD"},
+          {"name": "gpt-5-nano", "price_per_1m_tokens": "0.45 USD"},
+          {"name": "gpt-5.2", "price_per_1m_tokens": "15.75 USD"}
+        ]
+      },
+      "together": {
+        "api_key": "",
+        "base_url": "https://api.together.xyz/v1",
+        "models": [
+          {"name": "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8", "price_per_1m_tokens": "1.12 USD"},
+          {"name": "google/gemma-3n-E4B-it", "price_per_1m_tokens": "0.06 USD"},
+          {"name": "Qwen/Qwen2.5-7B-Instruct-Turbo", "price_per_1m_tokens": "0.30 USD"},
+          {"name": "mistralai/Mistral-Small-24B-Instruct-2501", "price_per_1m_tokens": "0.40 USD"}
+        ]
+      },
+      "huggingface": {
+        "api_key": "",
+        "base_url": "https://router.huggingface.co/v1",
+        "models": [
+          {"name": "Qwen/Qwen3-4B-Instruct-2507", "price_per_1m_tokens": "0.04 USD"},
+          {"name": "meta-llama/Llama-4-Scout-17B-16E-Instruct:nscale", "price_per_1m_tokens": "0.38 USD"}
+        ]
+      },
+      "local": {
+        "api_key": "",
+        "base_url": "http://localhost:11434/v1",
+        "models": []
+      }
+    }
+  },
+  "dictionary": [],
   "audio": {
     "device": null,
     "sample_rate": 16000,

@@ -27,7 +27,8 @@ class ModelConfig:
     """Configuration for a specific model."""
 
     name: str
-    price_per_hour: str = ""  # e.g. "0.36 USD" or "in Plus-Plan enthalten"
+    price_per_1m_tokens: str = ""  # e.g. "2.25 USD" (per 1M input+output tokens)
+
 
 
 @dataclass
@@ -73,12 +74,37 @@ class AudioConfig:
 
 
 @dataclass
+class LLMConfig:
+    """LLM post-processing configuration."""
+
+    enabled: bool = False
+    provider: str = "openai"
+    model: str = "gpt-4o-mini"
+    custom_instructions: str = ""
+    providers: dict[str, ProviderConfig] = field(default_factory=dict)
+
+    def get_api_key(self) -> str:
+        """Get API key for current provider."""
+        if self.provider in self.providers:
+            return self.providers[self.provider].api_key
+        return ""
+
+    def get_base_url(self) -> str:
+        """Get base URL for current provider."""
+        if self.provider in self.providers:
+            return self.providers[self.provider].base_url
+        return "https://api.openai.com/v1"
+
+
+@dataclass
 class Config:
     """Main configuration container."""
 
     version: int = CONFIG_VERSION
     hotkey: HotkeyConfig = field(default_factory=HotkeyConfig)
     asr: ASRConfig = field(default_factory=ASRConfig)
+    llm: LLMConfig = field(default_factory=LLMConfig)
+    dictionary: list[str] = field(default_factory=list)
     audio: AudioConfig = field(default_factory=AudioConfig)
     clipboard_restore: bool = True
     show_notification: bool = True  # Show notification after successful transcription
@@ -101,29 +127,71 @@ def _get_default_providers() -> dict[str, ProviderConfig]:
             api_key="",
             base_url="https://api.openai.com/v1",
             models=[
-                ModelConfig(name="gpt-4o-transcribe", price_per_hour="0.36 USD"),
-                ModelConfig(name="gpt-4o-mini-transcribe", price_per_hour="0.18 USD"),
+                ModelConfig(name="gpt-4o-transcribe", price_per_1m_tokens="0.36 USD"),
+                ModelConfig(name="gpt-4o-mini-transcribe", price_per_1m_tokens="0.18 USD"),
             ],
         ),
         "together": ProviderConfig(
             api_key="",
             base_url="https://api.together.xyz/v1",
             models=[
-                ModelConfig(name="Whisper Large v3", price_per_hour="0.09 USD"),
+                ModelConfig(name="openai/whisper-large-v3", price_per_1m_tokens="0.09 USD"),
             ],
         ),
         "huggingface": ProviderConfig(
             api_key="",
             base_url="https://router.huggingface.co/hf-inference",
             models=[
-                ModelConfig(name="openai/whisper-large-v3-turbo", price_per_hour="in Plus-Plan enthalten"),
-                ModelConfig(name="openai/whisper-large-v3", price_per_hour="in Plus-Plan enthalten"),
+                ModelConfig(
+                    name="openai/whisper-large-v3-turbo", price_per_1m_tokens="in Plus-Plan enthalten"
+                ),
+                ModelConfig(
+                    name="openai/whisper-large-v3", price_per_1m_tokens="in Plus-Plan enthalten"
+                ),
             ],
         ),
         "local": ProviderConfig(
             api_key="",
             base_url="http://localhost:11434/v1",
             models=[],  # User-configured
+        ),
+    }
+
+
+def _get_default_llm_providers() -> dict[str, ProviderConfig]:
+    """Get default LLM provider configurations."""
+    return {
+        "openai": ProviderConfig(
+            api_key="",
+            base_url="https://api.openai.com/v1",
+            models=[
+                ModelConfig(name="gpt-5-mini", price_per_1m_tokens="2.25 USD"),
+                ModelConfig(name="gpt-5-nano", price_per_1m_tokens="0.45 USD"),
+                ModelConfig(name="gpt-5.2", price_per_1m_tokens="15.75 USD"),
+            ],
+        ),
+        "together": ProviderConfig(
+            api_key="",
+            base_url="https://api.together.xyz/v1",
+            models=[
+                ModelConfig(name="meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8", price_per_1m_tokens="1.12 USD"),
+                ModelConfig(name="google/gemma-3n-E4B-it", price_per_1m_tokens="0.06 USD"),
+                ModelConfig(name="Qwen/Qwen2.5-7B-Instruct-Turbo", price_per_1m_tokens="0.30 USD"),
+                ModelConfig(name="mistralai/Mistral-Small-24B-Instruct-2501", price_per_1m_tokens="0.40 USD"),
+            ],
+        ),
+        "huggingface": ProviderConfig(
+            api_key="",
+            base_url="https://router.huggingface.co/v1",
+            models=[
+                ModelConfig(name="Qwen/Qwen3-4B-Instruct-2507", price_per_1m_tokens="0.04 USD"),
+                ModelConfig(name="meta-llama/Llama-4-Scout-17B-16E-Instruct:nscale", price_per_1m_tokens="0.38 USD"),
+            ],
+        ),
+        "local": ProviderConfig(
+            api_key="",
+            base_url="http://localhost:11434/v1",
+            models=[],
         ),
     }
 
@@ -137,6 +205,7 @@ def load_config() -> Config:
         config = Config()
         # Initialize default provider configs
         config.asr.providers = _get_default_providers()
+        config.llm.providers = _get_default_llm_providers()
         save_config(config)
         return config
 
@@ -144,7 +213,7 @@ def load_config() -> Config:
         with open(config_path, encoding="utf-8") as f:
             data = json.load(f)
 
-        # Parse provider configs including models
+        # Parse ASR provider configs including models
         providers_data = data.get("asr", {}).get("providers", {})
         providers = {}
         for name, pcfg in providers_data.items():
@@ -160,6 +229,22 @@ def load_config() -> Config:
         if not providers:
             providers = _get_default_providers()
 
+        # Parse LLM provider configs
+        llm_providers_data = data.get("llm", {}).get("providers", {})
+        llm_providers = {}
+        for name, pcfg in llm_providers_data.items():
+            models_data = pcfg.get("models", [])
+            models = [ModelConfig(**m) for m in models_data] if models_data else []
+            llm_providers[name] = ProviderConfig(
+                api_key=pcfg.get("api_key", ""),
+                base_url=pcfg.get("base_url", ""),
+                models=models,
+            )
+
+        # If no LLM providers in config, use defaults
+        if not llm_providers:
+            llm_providers = _get_default_llm_providers()
+
         config = Config(
             version=data.get("version", CONFIG_VERSION),
             hotkey=HotkeyConfig(**data.get("hotkey", {})),
@@ -171,6 +256,14 @@ def load_config() -> Config:
                 base_url=data.get("asr", {}).get("base_url", "https://api.openai.com/v1"),
                 providers=providers,
             ),
+            llm=LLMConfig(
+                enabled=data.get("llm", {}).get("enabled", False),
+                provider=data.get("llm", {}).get("provider", "openai"),
+                model=data.get("llm", {}).get("model", "gpt-4o-mini"),
+                custom_instructions=data.get("llm", {}).get("custom_instructions", ""),
+                providers=llm_providers,
+            ),
+            dictionary=data.get("dictionary", []),
             audio=AudioConfig(**data.get("audio", {})),
             clipboard_restore=data.get("clipboard_restore", True),
             show_notification=data.get("show_notification", True),
@@ -181,6 +274,7 @@ def load_config() -> Config:
         logger.error(f"Failed to load config: {e}, using defaults")
         config = Config()
         config.asr.providers = _get_default_providers()
+        config.llm.providers = _get_default_llm_providers()
         return config
 
 

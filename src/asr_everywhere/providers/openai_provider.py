@@ -41,6 +41,7 @@ class OpenAIProvider(ASRProvider):
         self,
         audio_data: bytes,
         config: ASRConfig,
+        dictionary: list[str] | None = None,
     ) -> TranscriptionResult:
         """Transcribe audio using OpenAI Whisper API."""
         client = self._get_client(config)
@@ -58,6 +59,11 @@ class OpenAIProvider(ASRProvider):
         # Add language if specified (not auto)
         if config.language and config.language != "auto":
             kwargs["language"] = config.language
+
+        # Add dictionary terms as prompt for better spelling
+        if dictionary:
+            kwargs["prompt"] = ", ".join(dictionary)
+            logger.debug(f"Using dictionary prompt with {len(dictionary)} terms")
 
         logger.info(f"Sending transcription request to OpenAI: model={config.model}")
 

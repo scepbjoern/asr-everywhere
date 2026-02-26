@@ -27,12 +27,14 @@ class ASRProvider(ABC):
         self,
         audio_data: bytes,
         config: ASRConfig,
+        dictionary: list[str] | None = None,
     ) -> TranscriptionResult:
         """Transcribe audio bytes to text.
 
         Args:
             audio_data: Audio data as bytes (WAV format)
             config: ASR configuration
+            dictionary: Optional list of custom terms for proper spelling
 
         Returns:
             TranscriptionResult with transcribed text

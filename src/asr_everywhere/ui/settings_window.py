@@ -10,6 +10,7 @@ from tkinter import messagebox, ttk
 
 from asr_everywhere.audio_recorder import AudioRecorder
 from asr_everywhere.config import Config, save_config
+from asr_everywhere.llm.registry import list_llm_providers
 from asr_everywhere.providers.registry import get_provider_models, list_providers
 
 logger = logging.getLogger(__name__)
@@ -67,6 +68,8 @@ class SettingsWindow:
 
         # Create tabs
         self._create_asr_tab()
+        self._create_llm_tab()
+        self._create_dictionary_tab()
         self._create_hotkeys_tab()
         self._create_audio_tab()
         self._create_language_tab()
@@ -130,7 +133,7 @@ class SettingsWindow:
             width=30,
         )
         self._model_combo.grid(row=2, column=1, sticky=tk.W, pady=5)
-        
+
         # Model price label
         self._model_price_label = ttk.Label(tab, text="")
         self._model_price_label.grid(row=2, column=2, sticky=tk.W, padx=5)
@@ -149,23 +152,231 @@ class SettingsWindow:
         # Test button
         test_btn = ttk.Button(tab, text="Test Connection", command=self._test_provider)
         test_btn.grid(row=4, column=1, sticky=tk.W, pady=15)
-        
+
         # Model configuration guide
         guide_frame = ttk.LabelFrame(tab, text="Add Custom Models", padding="5")
         guide_frame.grid(row=5, column=0, columnspan=3, sticky=tk.EW, pady=10)
-        
+
         guide_text = (
             "To add custom models, edit config.json manually:\n"
             "1. Click 'Open Config' below to open config.json\n"
             "2. Find your provider under 'asr.providers'\n"
             "3. Add a new model to the 'models' list:\n"
-            '   {"name": "model-name", "price_per_hour": "0.10 USD"}\n'
+            '   {"name": "model-name", "price_per_1m_tokens": "0.10 USD"}\n'
             "4. Save the file and restart the app"
         )
         ttk.Label(guide_frame, text=guide_text, justify=tk.LEFT).pack(anchor=tk.W)
-        
-        open_config_btn = ttk.Button(guide_frame, text="Open Config", command=self._open_config_file)
+
+        open_config_btn = ttk.Button(
+            guide_frame, text="Open Config", command=self._open_config_file
+        )
         open_config_btn.pack(anchor=tk.W, pady=(5, 0))
+
+    def _create_llm_tab(self) -> None:
+        """Create LLM post-processing configuration tab."""
+        tab = ttk.Frame(self._notebook, padding="10")
+        self._notebook.add(tab, text="LLM")
+
+        # Enable LLM checkbox
+        self._llm_enabled_var = tk.BooleanVar(value=self._config.llm.enabled)
+        enable_check = ttk.Checkbutton(
+            tab,
+            text="Enable LLM post-processing",
+            variable=self._llm_enabled_var,
+            command=self._on_llm_enabled_change,
+        )
+        enable_check.grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=5)
+
+        # Provider selection
+        ttk.Label(tab, text="Provider:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        self._llm_provider_var = tk.StringVar(value=self._config.llm.provider)
+        llm_provider_combo = ttk.Combobox(
+            tab,
+            textvariable=self._llm_provider_var,
+            values=list_llm_providers(),
+            state="readonly",
+            width=25,
+        )
+        llm_provider_combo.grid(row=1, column=1, sticky=tk.W, pady=5)
+        llm_provider_combo.bind("<<ComboboxSelected>>", self._on_llm_provider_change)
+
+        # Model selection
+        ttk.Label(tab, text="Model:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        self._llm_model_var = tk.StringVar(value=self._config.llm.model)
+        self._llm_model_combo = ttk.Combobox(
+            tab,
+            textvariable=self._llm_model_var,
+            values=self._get_llm_model_names(self._config.llm.provider),
+            width=25,
+        )
+        self._llm_model_combo.grid(row=2, column=1, sticky=tk.W, pady=5)
+
+        # API Key
+        ttk.Label(tab, text="API Key:").grid(row=3, column=0, sticky=tk.W, pady=5)
+        self._llm_api_key_var = tk.StringVar(value=self._config.llm.get_api_key())
+        self._llm_api_key_entry = ttk.Entry(
+            tab,
+            textvariable=self._llm_api_key_var,
+            show="*",
+            width=30,
+        )
+        self._llm_api_key_entry.grid(row=3, column=1, sticky=tk.W, pady=5)
+
+        # Base URL
+        ttk.Label(tab, text="Base URL:").grid(row=4, column=0, sticky=tk.W, pady=5)
+        self._llm_base_url_var = tk.StringVar(value=self._config.llm.get_base_url())
+        self._llm_base_url_entry = ttk.Entry(
+            tab,
+            textvariable=self._llm_base_url_var,
+            width=30,
+        )
+        self._llm_base_url_entry.grid(row=4, column=1, sticky=tk.W, pady=5)
+
+        # Custom instructions
+        ttk.Label(tab, text="Custom Instructions:").grid(row=5, column=0, sticky=tk.NW, pady=5)
+        self._llm_instructions_var = tk.StringVar(value=self._config.llm.custom_instructions)
+        instructions_frame = ttk.Frame(tab)
+        instructions_frame.grid(row=5, column=1, columnspan=2, sticky=tk.EW, pady=5)
+        self._llm_instructions_text = tk.Text(instructions_frame, width=40, height=4, wrap=tk.WORD)
+        self._llm_instructions_text.pack(fill=tk.BOTH, expand=True)
+        if self._config.llm.custom_instructions:
+            self._llm_instructions_text.insert("1.0", self._config.llm.custom_instructions)
+
+        # Help text
+        help_text = "LLM cleans up transcriptions: fixes punctuation, removes filler words."
+        ttk.Label(tab, text=help_text, foreground="gray").grid(
+            row=6, column=0, columnspan=3, sticky=tk.W, pady=10
+        )
+
+        # Update visibility based on enabled state
+        self._on_llm_enabled_change()
+
+    def _create_dictionary_tab(self) -> None:
+        """Create Dictionary configuration tab."""
+        tab = ttk.Frame(self._notebook, padding="10")
+        self._notebook.add(tab, text="Dictionary")
+
+        # Instructions
+        ttk.Label(
+            tab,
+            text="Custom terms for better transcription accuracy:",
+        ).grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=(0, 10))
+
+        # Listbox for dictionary terms
+        list_frame = ttk.Frame(tab)
+        list_frame.grid(row=1, column=0, columnspan=3, sticky=tk.NSEW, pady=5)
+        tab.grid_rowconfigure(1, weight=1)
+
+        self._dict_listbox = tk.Listbox(list_frame, height=10, width=40)
+        self._dict_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self._dict_listbox.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self._dict_listbox.config(yscrollcommand=scrollbar.set)
+
+        # Populate listbox
+        for term in self._config.dictionary:
+            self._dict_listbox.insert(tk.END, term)
+
+        # Entry for new term
+        ttk.Label(tab, text="New term:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        self._new_term_var = tk.StringVar()
+        new_term_entry = ttk.Entry(tab, textvariable=self._new_term_var, width=25)
+        new_term_entry.grid(row=2, column=1, sticky=tk.W, pady=5)
+        new_term_entry.bind("<Return>", self._add_dictionary_term)
+
+        # Buttons
+        btn_frame = ttk.Frame(tab)
+        btn_frame.grid(row=3, column=0, columnspan=3, sticky=tk.W, pady=10)
+
+        ttk.Button(btn_frame, text="Add", command=self._add_dictionary_term).pack(
+            side=tk.LEFT, padx=2
+        )
+        ttk.Button(btn_frame, text="Remove", command=self._remove_dictionary_term).pack(
+            side=tk.LEFT, padx=2
+        )
+        ttk.Button(btn_frame, text="Clear All", command=self._clear_dictionary).pack(
+            side=tk.LEFT, padx=2
+        )
+
+        # Help text
+        help_text = "Terms are passed to ASR and LLM for correct spelling."
+        ttk.Label(tab, text=help_text, foreground="gray").grid(
+            row=4, column=0, columnspan=3, sticky=tk.W, pady=10
+        )
+
+        # Dictionary support warning (shown when provider doesn't support it)
+        self._dict_warning_label = ttk.Label(
+            tab,
+            text="",
+            foreground="orange",
+        )
+        self._dict_warning_label.grid(
+            row=5, column=0, columnspan=3, sticky=tk.W, pady=5
+        )
+        self._update_dict_warning()
+
+    def _get_llm_model_names(self, provider_name: str) -> list[str]:
+        """Get model names for an LLM provider from config."""
+        if provider_name in self._config.llm.providers:
+            provider_config = self._config.llm.providers[provider_name]
+            if provider_config.models:
+                return [m.name for m in provider_config.models]
+        # Fallback to hardcoded
+        from asr_everywhere.llm.registry import get_llm_provider
+
+        try:
+            provider = get_llm_provider(provider_name)
+            return provider.list_models()
+        except Exception:
+            return []
+
+    def _on_llm_enabled_change(self) -> None:
+        """Handle LLM enabled checkbox change."""
+        enabled = self._llm_enabled_var.get()
+        state = "normal" if enabled else "disabled"
+        for widget in [
+            self._llm_model_combo,
+            self._llm_api_key_entry,
+            self._llm_base_url_entry,
+        ]:
+            widget.config(state=state)
+        self._llm_instructions_text.config(state="normal" if enabled else "disabled")
+
+    def _on_llm_provider_change(self, event: tk.Event) -> None:
+        """Handle LLM provider selection change."""
+        provider = self._llm_provider_var.get()
+
+        # Update model list
+        models = self._get_llm_model_names(provider)
+        self._llm_model_combo["values"] = models
+        if models:
+            self._llm_model_var.set(models[0])
+
+        # Update API key and base URL from config
+        if provider in self._config.llm.providers:
+            self._llm_api_key_var.set(self._config.llm.providers[provider].api_key)
+            self._llm_base_url_var.set(self._config.llm.providers[provider].base_url)
+        else:
+            self._llm_api_key_var.set("")
+            self._llm_base_url_var.set("")
+
+    def _add_dictionary_term(self, event: tk.Event | None = None) -> None:
+        """Add a new term to the dictionary listbox."""
+        term = self._new_term_var.get().strip()
+        if term:
+            self._dict_listbox.insert(tk.END, term)
+            self._new_term_var.set("")
+
+    def _remove_dictionary_term(self) -> None:
+        """Remove selected term from dictionary listbox."""
+        selection = self._dict_listbox.curselection()
+        if selection:
+            self._dict_listbox.delete(selection[0])
+
+    def _clear_dictionary(self) -> None:
+        """Clear all dictionary terms."""
+        self._dict_listbox.delete(0, tk.END)
 
     def _create_hotkeys_tab(self) -> None:
         """Create Hotkeys configuration tab."""
@@ -284,7 +495,7 @@ class SettingsWindow:
             variable=self._clipboard_var,
             value="keep",
         ).pack(side=tk.LEFT, padx=10)
-        
+
         # Notification toggle
         ttk.Label(tab, text="Notification:").grid(row=2, column=0, sticky=tk.W, pady=15)
         self._notification_var = tk.StringVar(
@@ -329,14 +540,14 @@ class SettingsWindow:
         model_name = self._model_var.get()
         provider = self._provider_var.get()
         price = ""
-        
+
         if provider in self._config.asr.providers:
             provider_config = self._config.asr.providers[provider]
             for model in provider_config.models:
                 if model.name == model_name:
-                    price = model.price_per_hour
+                    price = model.price_per_1m_tokens
                     break
-        
+
         if price:
             self._model_price_label.config(text=f"({price})")
         else:
@@ -367,8 +578,22 @@ class SettingsWindow:
         # Update visibility
         self._update_base_url_visibility()
         self._update_model_price_label()
+        self._update_dict_warning()
 
         logger.debug(f"Provider changed to: {provider}")
+
+    def _update_dict_warning(self) -> None:
+        """Update dictionary support warning based on current ASR provider."""
+        provider = self._config.asr.provider
+        # Providers that don't support dictionary/prompt parameter in ASR
+        unsupported_providers = {"together", "huggingface"}
+
+        if provider in unsupported_providers:
+            self._dict_warning_label.config(
+                text=f"⚠️ {provider.capitalize()} ASR does not support dictionary terms for spelling hints."
+            )
+        else:
+            self._dict_warning_label.config(text="")
 
     def _update_base_url_visibility(self) -> None:
         """Update base URL field visibility and editability."""
@@ -411,8 +636,18 @@ class SettingsWindow:
                 modifiers.append("win")
 
             # Only accept combo with at least one modifier and a non-modifier key
-            modifier_keys = {"ctrl", "alt", "shift", "windows", "left ctrl", "right ctrl",
-                             "left alt", "right alt", "left shift", "right shift"}
+            modifier_keys = {
+                "ctrl",
+                "alt",
+                "shift",
+                "windows",
+                "left ctrl",
+                "right ctrl",
+                "left alt",
+                "right alt",
+                "left shift",
+                "right shift",
+            }
             if modifiers and key and key not in modifier_keys:
                 hotkey = "+".join(modifiers + [key])
                 self._hotkey_var.set(hotkey)
@@ -503,6 +738,23 @@ class SettingsWindow:
             self._config.asr.providers[provider].api_key = self._api_key_var.get()
             self._config.asr.providers[provider].base_url = self._base_url_var.get()
 
+        # Update LLM config
+        self._config.llm.enabled = self._llm_enabled_var.get()
+        self._config.llm.provider = self._llm_provider_var.get()
+        self._config.llm.model = self._llm_model_var.get()
+        self._config.llm.custom_instructions = self._llm_instructions_text.get(
+            "1.0", tk.END
+        ).strip()
+
+        # Update LLM provider-specific config
+        llm_provider = self._config.llm.provider
+        if llm_provider in self._config.llm.providers:
+            self._config.llm.providers[llm_provider].api_key = self._llm_api_key_var.get()
+            self._config.llm.providers[llm_provider].base_url = self._llm_base_url_var.get()
+
+        # Update dictionary
+        self._config.dictionary = list(self._dict_listbox.get(0, tk.END))
+
         # Update hotkey config
         self._config.hotkey.dictate = self._hotkey_var.get()
         self._config.hotkey.mode = self._mode_var.get()
@@ -519,7 +771,7 @@ class SettingsWindow:
 
         # Update clipboard config
         self._config.clipboard_restore = self._clipboard_var.get() == "restore"
-        
+
         # Update notification config
         self._config.show_notification = self._notification_var.get() == "show"
 
@@ -555,6 +807,14 @@ class SettingsWindow:
             "_device_var",
             "_language_var",
             "_clipboard_var",
+            "_notification_var",
+            "_llm_enabled_var",
+            "_llm_provider_var",
+            "_llm_model_var",
+            "_llm_api_key_var",
+            "_llm_base_url_var",
+            "_llm_instructions_var",
+            "_new_term_var",
         ]:
             if hasattr(self, var_name):
                 setattr(self, var_name, None)

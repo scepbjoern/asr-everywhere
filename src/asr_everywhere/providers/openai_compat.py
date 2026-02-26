@@ -54,6 +54,7 @@ class OpenAICompatProvider(ASRProvider):
         self,
         audio_data: bytes,
         config: ASRConfig,
+        dictionary: list[str] | None = None,
     ) -> TranscriptionResult:
         """Transcribe audio using OpenAI-compatible API."""
         client = self._get_client(config)
@@ -71,6 +72,18 @@ class OpenAICompatProvider(ASRProvider):
         # Add language if specified (not auto)
         if config.language and config.language != "auto":
             kwargs["language"] = config.language
+
+        # Add dictionary terms as prompt for better spelling
+        # Note: Some providers don't support prompt parameter well
+        if dictionary:
+            if self._provider_name == "together":
+                logger.warning(
+                    f"Dictionary with {len(dictionary)} terms provided, but "
+                    f"{self._provider_name} ASR does not reliably support prompt parameter"
+                )
+            else:
+                kwargs["prompt"] = ", ".join(dictionary)
+                logger.debug(f"Using dictionary prompt with {len(dictionary)} terms")
 
         logger.info(
             f"Sending transcription request to {self._provider_name}: "

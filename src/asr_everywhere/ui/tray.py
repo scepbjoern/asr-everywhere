@@ -33,6 +33,7 @@ class TrayIcon:
         get_model_info: Callable[[], tuple[str, str]] | None = None,
         get_hotkey_mode: Callable[[], str] | None = None,
         on_toggle_hotkey_mode: Callable[[], None] | None = None,
+        get_llm_info: Callable[[], tuple[str, str]] | None = None,
     ) -> None:
         """Initialize tray icon.
 
@@ -43,6 +44,7 @@ class TrayIcon:
             get_model_info: Callback returning (model_name, price) tuple (optional)
             get_hotkey_mode: Callback returning current hotkey mode (optional)
             on_toggle_hotkey_mode: Callback to toggle hotkey mode (optional)
+            get_llm_info: Callback returning (llm_model_name, price) tuple (optional)
         """
         self._on_quit = on_quit
         self._on_toggle_recording = on_toggle_recording
@@ -50,6 +52,7 @@ class TrayIcon:
         self._get_model_info = get_model_info
         self._get_hotkey_mode = get_hotkey_mode
         self._on_toggle_hotkey_mode = on_toggle_hotkey_mode
+        self._get_llm_info = get_llm_info
         self._state = TrayState.IDLE
         self._icon: pystray.Icon | None = None
         self._thread: threading.Thread | None = None
@@ -103,6 +106,16 @@ class TrayIcon:
                 )
             )
 
+        # Add LLM info if available
+        if self._get_llm_info:
+            items.append(
+                MenuItem(
+                    lambda item: self._get_llm_text(),
+                    lambda item: None,
+                    enabled=False,
+                )
+            )
+
         items.append(Menu.SEPARATOR)
 
         if self._on_toggle_recording:
@@ -124,7 +137,9 @@ class TrayIcon:
         if self._get_hotkey_mode and self._on_toggle_hotkey_mode:
             items.append(
                 MenuItem(
-                    lambda item: f"Mode: {'Push-to-Talk' if self._get_hotkey_mode() == 'push_to_talk' else 'Toggle'}",
+                    lambda item: (
+                        f"Mode: {'Push-to-Talk' if self._get_hotkey_mode() == 'push_to_talk' else 'Toggle'}"
+                    ),
                     lambda item: self._on_toggle_hotkey_mode(),
                 )
             )
@@ -146,7 +161,17 @@ class TrayIcon:
         if not model_name:
             return ""
         price_text = f" ({model_price})" if model_price else ""
-        return f"Model: {model_name}{price_text}"
+        return f"ASR: {model_name}{price_text}"
+
+    def _get_llm_text(self) -> str:
+        """Get formatted LLM info text for menu."""
+        if not self._get_llm_info:
+            return ""
+        llm_name, llm_price = self._get_llm_info()
+        if not llm_name:
+            return "LLM: disabled"
+        price_text = f" ({llm_price})" if llm_price else ""
+        return f"LLM: {llm_name}{price_text}"
 
     def set_state(self, state: TrayState) -> None:
         """Update tray icon state.

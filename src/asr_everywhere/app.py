@@ -75,6 +75,7 @@ class ASREverywhereApp:
                 get_model_info=self._get_model_info,
                 get_hotkey_mode=lambda: self._config.hotkey.mode,
                 on_toggle_hotkey_mode=self._toggle_hotkey_mode,
+                get_llm_info=self._get_llm_info,
             )
 
             # Link tray to pipeline
@@ -138,7 +139,26 @@ class ASREverywhereApp:
             provider_config = self._config.asr.providers[provider]
             for model in provider_config.models:
                 if model.name == model_name:
-                    model_price = model.price_per_hour
+                    model_price = model.price_per_1m_tokens
+                    break
+
+        return (model_name, model_price)
+
+    def _get_llm_info(self) -> tuple[str, str]:
+        """Get current LLM model name and price."""
+        if not self._config or not self._config.llm.enabled:
+            return ("", "")
+
+        model_name = self._config.llm.model
+        model_price = ""
+
+        # Find price from provider config
+        provider = self._config.llm.provider
+        if provider in self._config.llm.providers:
+            provider_config = self._config.llm.providers[provider]
+            for model in provider_config.models:
+                if model.name == model_name:
+                    model_price = model.price_per_1m_tokens
                     break
 
         return (model_name, model_price)
@@ -200,7 +220,9 @@ class ASREverywhereApp:
             # Refresh tray menu to show updated model info
             self._tray.refresh_menu()
 
-            logger.info(f"Settings updated - hotkey: {self._config.hotkey.dictate}, mode: {self._config.hotkey.mode}")
+            logger.info(
+                f"Settings updated - hotkey: {self._config.hotkey.dictate}, mode: {self._config.hotkey.mode}"
+            )
             self._settings_open = False
 
         def on_close():

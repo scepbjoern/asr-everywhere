@@ -6,6 +6,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from asr_everywhere.audio_recorder import AudioRecorder
+from asr_everywhere.llm.post_processor import PostProcessor
 from asr_everywhere.providers.registry import get_provider
 from asr_everywhere.text_inserter import TextInserter
 
@@ -86,16 +87,31 @@ class TranscriptionPipeline:
             # Get ASR provider
             provider = get_provider(self._config.asr.provider)
 
-            # Transcribe
+            # Transcribe with dictionary terms
             logger.info("Starting transcription")
-            result = provider.transcribe(audio_data, self._config.asr)
+            result = provider.transcribe(audio_data, self._config.asr, self._config.dictionary)
 
             if result.text:
-                logger.info(f"Transcription: {result.text[:100]}...")
+                text = result.text
+                logger.info(f"Transcription: {text[:100]}...")
+
+                # LLM post-processing (if enabled)
+                if self._config.llm.enabled and text.strip():
+                    try:
+                        processor = PostProcessor(self._config)
+                        text = processor.process(text)
+                        logger.info("LLM post-processing complete")
+                    except Exception as e:
+                        logger.error(f"LLM post-processing failed: {e}")
+                        # Graceful degradation: use raw transcription
+                        self._tray.show_notification(
+                            "LLM Error",
+                            "Using raw transcription",
+                        )
 
                 # Insert text
                 success = self._inserter.insert_text(
-                    result.text,
+                    text,
                     restore_clipboard=self._config.clipboard_restore,
                 )
 
@@ -103,9 +119,7 @@ class TranscriptionPipeline:
                     if self._config.show_notification:
                         self._tray.show_notification(
                             "Transcription Complete",
-                            f"Inserted: {result.text[:50]}..."
-                            if len(result.text) > 50
-                            else result.text,
+                            f"Inserted: {text[:50]}..." if len(text) > 50 else text,
                         )
                 else:
                     self._tray.show_notification(
@@ -120,7 +134,9 @@ class TranscriptionPipeline:
 
         except Exception as e:
             logger.error(f"Transcription pipeline error: {e}")
-            self._tray.show_notification("Error", str(e))
+            # Truncate error message to avoid pystray notification limit (256 chars)
+            error_msg = str(e)[:200]
+            self._tray.show_notification("Error", error_msg)
 
         finally:
             self._processing = False

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import io
 import logging
 from typing import TYPE_CHECKING
 
@@ -43,16 +42,23 @@ class HuggingfaceProvider(ASRProvider):
         self,
         audio_data: bytes,
         config: ASRConfig,
+        dictionary: list[str] | None = None,
     ) -> TranscriptionResult:
         """Transcribe audio using Huggingface Inference API."""
         api_key = config.get_api_key()
         if not api_key:
             raise ValueError("Huggingface API key not configured")
 
+        # Note: Huggingface Inference API does not support prompt parameter for ASR
+        if dictionary:
+            logger.warning(
+                f"Dictionary with {len(dictionary)} terms provided, but Huggingface ASR does not support prompt parameter"
+            )
+
         # Extract model name (remove hf-inference/ prefix if present)
         model = config.model
         if model.startswith("hf-inference/"):
-            model = model[len("hf-inference/"):]
+            model = model[len("hf-inference/") :]
 
         # Build URL: https://router.huggingface.co/hf-inference/models/<model>
         base_url = config.get_base_url()
@@ -63,9 +69,7 @@ class HuggingfaceProvider(ASRProvider):
         else:
             url = f"{base_url.rstrip('/')}/models/{model}"
 
-        logger.info(
-            f"Sending transcription request to Huggingface: model={model}, url={url}"
-        )
+        logger.info(f"Sending transcription request to Huggingface: model={model}, url={url}")
 
         client = self._get_client()
 
@@ -97,7 +101,9 @@ class HuggingfaceProvider(ASRProvider):
                 language=config.language if config.language != "auto" else None,
             )
         except httpx.HTTPStatusError as e:
-            logger.error(f"Huggingface transcription failed: {e.response.status_code} - {e.response.text}")
+            logger.error(
+                f"Huggingface transcription failed: {e.response.status_code} - {e.response.text}"
+            )
             raise
         except Exception as e:
             logger.error(f"Huggingface transcription failed: {e}")
