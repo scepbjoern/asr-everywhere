@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Build EXE with PyInstaller
+        run: |
+          python scripts/build_exe.py
+
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup -y
+
+      - name: Build Installer
+        run: |
+          iscc installer/setup.iss
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ASR Everywhere ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## ASR Everywhere ${{ steps.get_version.outputs.VERSION }}
+            
+            ### Downloads
+            - **Installer**: `asr-everywhere-setup.exe` - Recommended for most users
+            - **Portable EXE**: `asr-everywhere.exe` - Standalone executable
+            
+            ### System Requirements
+            - Windows 10 or Windows 11
+            - Microphone (for voice input)
+            - Internet connection (for ASR/LLM APIs)
+            
+            ### Installation
+            1. Download and run `asr-everywhere-setup.exe`
+            2. Follow the installation wizard
+            3. Launch from Start Menu or Desktop shortcut
+            
+            ### What's New
+            See [CHANGELOG.md](CHANGELOG.md) for release notes.
+          files: |
+            dist/asr-everywhere.exe
+            dist/installer/asr-everywhere-setup.exe
+          draft: false
+          prerelease: ${{ contains(steps.get_version.outputs.VERSION, '-rc') || contains(steps.get_version.outputs.VERSION, '-beta') || contains(steps.get_version.outputs.VERSION, '-alpha') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

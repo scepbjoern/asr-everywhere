@@ -14,12 +14,22 @@ A lightweight Windows desktop application for system-wide voice-to-text dictatio
 ## Requirements
 
 - **Operating System**: Windows 10 or Windows 11
-- **Python**: Version 3.11 or higher
 - **Microphone**: Any audio input device
+- **Internet Connection**: Required for ASR/LLM API calls
 
 ## Installation
 
-### From PyPI (Recommended)
+### Download Installer (Recommended for Non-Developers)
+
+Download the latest installer from the [Releases page](https://github.com/scepbjoern/asr-everywhere/releases):
+
+1. Download `asr-everywhere-setup.exe`
+2. Run the installer and follow the wizard
+3. Launch from Start Menu or Desktop shortcut
+
+**Note**: The standalone EXE does not require Python to be installed.
+
+### From PyPI (For Python Users)
 
 ```powershell
 pip install asr-everywhere
@@ -170,6 +180,34 @@ python -m build
 
 # Verify wheel contents
 python -m zipfile -l dist/asr_everywhere-0.1.0-py3-none-any.whl
+```
+
+### Building Standalone EXE
+
+```powershell
+# Install dev dependencies (includes PyInstaller)
+pip install -e ".[dev]"
+
+# Build EXE
+python scripts/build_exe.py
+
+# Test EXE
+.\dist\asr-everywhere.exe
+```
+
+### Building Windows Installer
+
+Prerequisites:
+- [Inno Setup 6](https://jrsoftware.org/isinfo.php) installed
+
+```powershell
+# Build EXE first
+python scripts/build_exe.py
+
+# Build installer
+iscc installer/setup.iss
+
+# Output: dist/installer/asr-everywhere-setup.exe
 ```
 
 ## Project Structure

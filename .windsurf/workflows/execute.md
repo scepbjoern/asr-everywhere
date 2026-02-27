@@ -124,6 +124,8 @@ Provide summary:
 ```bash
 # Output from each validation command
 ```
+### User Testing Guide
+Instruct the user, what he can test now to verify the implementation.
 
 ### Ready for Commit
 - Confirm all changes are complete

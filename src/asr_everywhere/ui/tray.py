@@ -77,6 +77,12 @@ class TrayIcon:
         # Try different locations for assets
         locations = []
 
+        # When running as PyInstaller bundle (frozen)
+        if getattr(sys, "frozen", False):
+            # PyInstaller extracts bundled files to sys._MEIPASS
+            bundled_assets = Path(sys._MEIPASS) / "assets"
+            locations.append(bundled_assets)
+
         # When running from source
         if "site-packages" not in __file__:
             # Development mode - look for assets relative to this file

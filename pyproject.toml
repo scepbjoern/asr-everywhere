@@ -26,11 +26,6 @@ classifiers = [
     "Topic :: Multimedia :: Sound/Audio :: Speech",
 ]
 
-[project.urls]
-Homepage = "https://github.com/scepbjoern/asr-everywhere"
-Repository = "https://github.com/scepbjoern/asr-everywhere"
-Issues = "https://github.com/scepbjoern/asr-everywhere/issues"
-
 dependencies = [
     "sounddevice>=0.4",
     "soundfile>=0.12",
@@ -43,12 +38,18 @@ dependencies = [
     "Pillow>=10.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/scepbjoern/asr-everywhere"
+Repository = "https://github.com/scepbjoern/asr-everywhere"
+Issues = "https://github.com/scepbjoern/asr-everywhere/issues"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
     "pytest-mock>=3.12",
     "pytest-cov>=4.0",
     "ruff>=0.4",
+    "pyinstaller>=6.0",
 ]
 
 [project.scripts]

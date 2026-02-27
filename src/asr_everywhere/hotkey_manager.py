@@ -62,10 +62,8 @@ class HotkeyManager:
 
         # Register release callback using keyboard.hook for key release detection
         def on_key_release(event):
-            if event.event_type == keyboard.KEY_UP:
-                # Check if the hotkey combo is now released
-                if not keyboard.is_pressed(hotkey):
-                    on_release()
+            if event.event_type == keyboard.KEY_UP and not keyboard.is_pressed(hotkey):
+                on_release()
 
         hook = keyboard.hook(on_key_release, suppress=False)
         self._ptt_hooks[hotkey] = (on_press, on_release, hook)
