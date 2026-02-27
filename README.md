@@ -21,7 +21,7 @@ A lightweight Windows desktop application for system-wide voice-to-text dictatio
 
 ### Download Installer (Recommended for Non-Developers)
 
-Download the latest installer from the [Releases page](https://github.com/scepbjoern/asr-everywhere/releases):
+Download the latest installer from the [Releases page](https://github.com/scepbjoern/asr-everywhere/dist/installer/):
 
 1. Download `asr-everywhere-setup.exe`
 2. Run the installer and follow the wizard

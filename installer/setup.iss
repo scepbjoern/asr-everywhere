@@ -5,7 +5,7 @@
 ; Output: dist\installer\asr-everywhere-setup.exe
 
 #define AppName "ASR Everywhere"
-#define AppVersion "0.1.0"
+#define AppVersion "0.2.0"
 #define AppPublisher "ASR Everywhere Contributors"
 #define AppURL "https://github.com/scepbjoern/asr-everywhere"
 #define AppExeName "asr-everywhere.exe"
