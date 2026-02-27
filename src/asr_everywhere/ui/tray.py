@@ -199,6 +199,9 @@ class TrayIcon:
         if self._on_settings:
             items.append(MenuItem("Settings", lambda item: self._on_settings()))
 
+        # Help menu item - opens MANUAL.md in browser
+        items.append(MenuItem("Help", lambda item: self._open_help()))
+
         # Add hotkey mode toggle if available
         if self._get_hotkey_mode and self._on_toggle_hotkey_mode:
             items.append(
@@ -238,6 +241,17 @@ class TrayIcon:
             return "LLM: disabled"
         price_text = f" ({llm_price})" if llm_price else ""
         return f"LLM: {llm_name}{price_text}"
+
+    def _open_help(self) -> None:
+        """Open the MANUAL.md page in the default browser."""
+        import webbrowser
+
+        help_url = "https://github.com/scepbjoern/asr-everywhere/blob/main/MANUAL.md"
+        try:
+            webbrowser.open(help_url)
+            logger.info(f"Opened help page: {help_url}")
+        except Exception as e:
+            logger.error(f"Failed to open help page: {e}")
 
     def set_state(self, state: TrayState) -> None:
         """Update tray icon state.

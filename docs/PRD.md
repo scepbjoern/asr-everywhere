@@ -92,6 +92,7 @@ The application supports multiple ASR backends — including cloud inference pro
 - ✅ Windows Start Menu integration (Phase 5)
 - ✅ Desktop shortcut option (Phase 5)
 - ✅ Autostart with Windows (Phase 5, EXE-only)
+- ✅ Help page accessible via tray menu (opens MANUAL.md in browser)
 
 ### Out of Scope (Future)
 - ❌ History / transcription log
