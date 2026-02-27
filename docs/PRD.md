@@ -91,6 +91,7 @@ The application supports multiple ASR backends — including cloud inference pro
 - ✅ Standalone EXE packaging with PyInstaller (Phase 5)
 - ✅ Windows Start Menu integration (Phase 5)
 - ✅ Desktop shortcut option (Phase 5)
+- ✅ Autostart with Windows (Phase 5, EXE-only)
 
 ### Out of Scope (Future)
 - ❌ History / transcription log
@@ -99,7 +100,7 @@ The application supports multiple ASR backends — including cloud inference pro
 - ❌ Real-time streaming transcription (optional future enhancement if simple to add)
 - ❌ Encrypted API key storage (Windows Credential Manager)
 - ❌ MSI installer (EXE with PyInstaller is sufficient)
-- ❌ Autostart with Windows (user can configure manually via Task Scheduler)
+- ❌ Autostart with Windows → Moved to Phase 5 (EXE-only)
 - ❌ Offline-only mode
 - ❌ macOS / Linux support
 - ❌ Multi-language beyond DE/EN
@@ -134,12 +135,18 @@ The application supports multiple ASR backends — including cloud inference pro
 8. **As a** user, **I want to** see a visual indicator when recording is active, **so that** I always know whether the microphone is on.
    - *Example:* The System Tray icon turns red while recording.
 
+9. **As a** user, **I want to** use voice commands during dictation (e.g., "New paragraph", "Punkt", "Delete that"), **so that** I can control formatting and make corrections without touching the keyboard.
+   - *Example:* I say "Hallo wie geht es dir Punkt Neuer Absatz Heute ist ein schöner Tag", and the inserted text is "Hallo, wie geht es dir.\n\nHeute ist ein schöner Tag."
+
+10. **As a** user (EXE-only), **I want to** have ASR Everywhere start automatically when I log in to Windows, **so that** I don't have to manually launch it every time I restart my computer.
+   - *Example:* After installing the EXE, the app is running in the tray immediately after each login without manual intervention.
+
 ### Technical User Stories
 
-9. **As a** developer extending the app, **I want** ASR providers to follow a common interface, **so that** I can add new providers with minimal effort.
+11. **As a** developer extending the app, **I want** ASR providers to follow a common interface, **so that** I can add new providers with minimal effort.
    - *Example:* Adding a new provider requires implementing a single `transcribe(audio_data, config) -> str` method.
 
-10. **As a** developer extending the app, **I want** LLM providers to follow the same OpenAI-compatible pattern as ASR providers, **so that** the post-processing pipeline is consistent.
+12. **As a** developer extending the app, **I want** LLM providers to follow the same OpenAI-compatible pattern as ASR providers, **so that** the post-processing pipeline is consistent.
 
 ---
 
@@ -330,20 +337,83 @@ User: {raw_transcription}
 A tkinter-based settings window accessible from the System Tray context menu. Sections:
 
 1. **ASR Provider** — Provider dropdown, API key input, model selection, base URL (for local/custom).
-2. **LLM Post-Processing** — Enable/disable toggle, provider/model selection, custom instructions text area.
+2. **LLM Post-Processing** — Enable/disable toggle, provider/model selection, custom instructions text area, voice commands toggle.
 3. **Dictionary** — List of custom terms (add/remove).
 4. **Hotkeys** — Hotkey A and B configuration, toggle vs push-to-talk mode per hotkey.
 5. **Audio** — Microphone device selection dropdown.
 6. **Language** — Language selection (DE, EN, Auto-detect).
 7. **Clipboard** — Default clipboard behavior setting.
+8. **Autostart** (EXE-only) — Toggle to launch at Windows login.
 
 ### 7.8 Dictionary
 
 | Feature | Details |
 |---|---|
 | **Storage** | List of strings in JSON config under `"dictionary": ["term1", "term2", ...]` |
-| **Usage** | Injected into LLM post-processing prompt as context. Also optionally passed to ASR provider `prompt` parameter (where supported, e.g. OpenAI Whisper). |
+| **Usage** | Injected into LLM post-processing prompt as context. Also optionally passed to ASR provider `prompt` parameter (where supported, e.g. OpenAI Whisper, gpt-4o-transcribe). |
+| **Fallback for non-OpenAI providers** | For providers without `prompt` parameter support (Together.ai, HF, etc.), dictionary terms are ONLY injected via LLM post-processing. If LLM post-processing is disabled, dictionary has no effect on transcription accuracy. |
 | **Management** | Add/remove via Settings UI. |
+
+### 7.9 Voice Commands
+
+Voice commands allow users to control formatting and perform simple editing actions by speaking special phrases during dictation. Commands are processed by the LLM post-processor.
+
+| Feature | Details |
+|---|---|
+| **Enable/Disable** | Toggle in settings, separate from LLM post-processing. Requires LLM post-processing to be enabled. |
+| **Recognition** | Bilingual (German + English) — commands in either language are recognized. |
+| **Fallback** | If a command is not recognized, it is inserted as literal text (e.g., "Neuer Absatz" appears as text). |
+| **Processing** | LLM receives command definitions in system prompt and transforms recognized commands into actions. |
+
+#### Supported Commands
+
+| Category | Command (EN) | Command (DE) | Action |
+|----------|--------------|--------------|--------|
+| **Formatting** | "New paragraph" | "Neuer Absatz" | Insert `\n\n` |
+| | "New line" | "Neue Zeile" | Insert `\n` |
+| | "Period" / "Full stop" | "Punkt" | Insert `.` |
+| | "Comma" | "Komma" | Insert `,` |
+| | "Question mark" | "Fragezeichen" | Insert `?` |
+| | "Exclamation mark" | "Ausrufezeichen" | Insert `!` |
+| | "Colon" | "Doppelpunkt" | Insert `:` |
+| | "Semicolon" | "Semikolon" | Insert `;` |
+| **Quotes** | "Quote" / "Open quote" | "Anführungszeichen" / "Anfang Anführungszeichen" | Insert `"` |
+| | "End quote" / "Close quote" | "Ende Anführungszeichen" | Insert `"` |
+| **Capitalization** | "Capitalize [word]" | "[Wort] großschreiben" | Capitalize next/specified word |
+| | "All caps [word]" | "[Wort] alles groß" | UPPERCASE specified word |
+| **Editing** | "Delete that" | "Lösche das" | Delete last utterance |
+| | "Delete last word" | "Lösche letztes Wort" | Delete last word |
+| | "Delete last sentence" | "Lösche letzten Satz" | Delete last sentence |
+
+#### Prompt Structure (with Voice Commands enabled)
+
+```
+System: You are a transcription post-processor. Clean up the following dictated text.
+
+Rules:
+- Fix punctuation and capitalization
+- Remove filler words (ähm, um, like, so...)
+{user_custom_instructions}
+
+Dictionary (use these exact spellings):
+{dictionary_terms}
+
+Voice Commands (transform these phrases into actions):
+- "New paragraph" / "Neuer Absatz" → insert two newlines
+- "New line" / "Neue Zeile" → insert one newline
+- "Period" / "Punkt" → insert period
+- "Comma" / "Komma" → insert comma
+- "Question mark" / "Fragezeichen" → insert ?
+- "Exclamation mark" / "Ausrufezeichen" → insert !
+- "Quote" / "Anführungszeichen" → insert opening quote
+- "End quote" / "Ende Anführungszeichen" → insert closing quote
+- "Delete that" / "Lösche das" → remove last utterance
+- "Delete last word" / "Lösche letztes Wort" → remove last word
+- "Delete last sentence" / "Lösche letzten Satz" → remove last sentence
+- If a command phrase is not clearly meant as a command, transcribe it literally.
+
+User: {raw_transcription}
+```
 
 ---
 
@@ -431,6 +501,7 @@ A tkinter-based settings window accessible from the System Tray context menu. Se
     "provider": "openai",
     "model": "gpt-4o-mini",
     "custom_instructions": "",
+    "voice_commands_enabled": true,
     "providers": {}
   },
   "audio": {
@@ -440,6 +511,9 @@ A tkinter-based settings window accessible from the System Tray context menu. Se
   "dictionary": [],
   "clipboard": {
     "default_behavior": "restore"
+  },
+  "autostart": {
+    "enabled": true
   }
 }
 ```
@@ -607,6 +681,58 @@ A user can install the application via `pip install`, configure an ASR provider 
 
 **Estimated effort:** 1 week
 
+### Phase 6: Voice Commands, Dictionary Enhancement & Autostart
+**Goal:** Add voice commands for hands-free formatting control, ensure dictionary works with all providers, and add Windows autostart capability.
+
+**Deliverables:**
+
+#### 6.1 Voice Commands
+- ⬜ Voice commands toggle in Settings UI (requires LLM post-processing enabled)
+- ⬜ Bilingual command recognition (German + English)
+- ⬜ LLM prompt extension with command definitions
+- ⬜ Supported commands:
+  - **Formatting**: "New paragraph"/"Neuer Absatz", "New line"/"Neue Zeile", "Period"/"Punkt", "Comma"/"Komma", "Question mark"/"Fragezeichen", "Exclamation mark"/"Ausrufezeichen", "Colon"/"Doppelpunkt", "Semicolon"/"Semikolon"
+  - **Quotes**: "Quote"/"Anführungszeichen", "End quote"/"Ende Anführungszeichen"
+  - **Capitalization**: "Capitalize [word]"/"[Wort] großschreiben", "All caps [word]"/"[Wort] alles groß"
+  - **Editing**: "Delete that"/"Lösche das", "Delete last word"/"Lösche letztes Wort", "Delete last sentence"/"Lösche letzten Satz"
+- ⬜ Fallback: unrecognized commands inserted as literal text
+- ⬜ Config schema: `llm.voice_commands_enabled` (default: true)
+
+#### 6.2 Dictionary Enhancement for Non-OpenAI Providers
+- ⬜ Detect provider `prompt` parameter support (OpenAI Whisper/gpt-4o-transcribe: yes, others: no)
+- ⬜ For providers without `prompt` support: dictionary terms injected ONLY via LLM post-processing
+- ⬜ Warning in Settings UI when LLM post-processing is disabled with non-OpenAI provider and dictionary has entries: "Dictionary terms require LLM post-processing for this provider"
+- ⬜ Update `post_processor.py` to always include dictionary in system prompt (already implemented, verify)
+
+#### 6.3 Autostart with Windows (EXE-only)
+- ⬜ Registry Run Key implementation (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`)
+- ⬜ Entry: `ASR Everywhere` → path to EXE
+- ⬜ No admin rights required (per-user setting)
+- ⬜ Inno Setup installer option: checkbox for autostart (enabled by default)
+- ⬜ Settings UI toggle for autostart (visible only in EXE mode)
+- ⬜ On uninstall: registry entry removed automatically
+- ⬜ Config schema: `autostart.enabled` (default: true)
+
+**Technical Details:**
+- Voice commands processed by LLM during post-processing step
+- Dictionary fallback requires no code changes if LLM post-processing already injects dictionary
+- Autostart uses Python `winreg` module for registry access
+- Autostart toggle in Settings UI checks if running as EXE (sys.frozen attribute)
+
+**Validation:**
+- Voice command "Punkt" inserts period in transcribed text
+- Voice command "Neuer Absatz" inserts two newlines
+- Voice command "Lösche das" removes last utterance
+- Commands work in both German and English
+- Dictionary terms are correctly transcribed with non-OpenAI provider when LLM post-processing is enabled
+- Warning shown when LLM post-processing is disabled with dictionary entries and non-OpenAI provider
+- Autostart registry entry created after EXE install
+- App launches automatically on next login
+- Settings UI can toggle autostart on/off
+- Registry entry removed on uninstall
+
+**Estimated effort:** 1 week
+
 ---
 
 ## 13. Future Considerations
@@ -614,8 +740,6 @@ A user can install the application via `pip install`, configure an ASR provider 
 ### Post-MVP Enhancements
 - **Real-time Streaming Transcription** — Show partial text as user speaks (requires WebSocket-based ASR providers like Deepgram or local streaming Whisper).
 - **Transcription History** — Searchable log of past dictations with timestamps.
-- ~~**Standalone .exe** — Package via PyInstaller/Nuitka for users who don't want Python installed.~~ ✅ Moved to Phase 5
-- **Autostart with Windows** — Option to launch at login via registry/startup folder.
 - **Encrypted API Key Storage** — Use Windows Credential Manager for secure key storage.
 
 ### Integration Opportunities
@@ -626,7 +750,6 @@ A user can install the application via `pip install`, configure an ASR provider 
 ### Advanced Features
 - **Multi-language auto-switch** — Seamlessly handle mixed German/English dictation in a single recording.
 - **Speaker diarization** — Identify different speakers (for meeting notes use case).
-- **Voice commands** — "New paragraph", "delete last sentence", etc.
 - **Additional languages** beyond DE/EN.
 
 ---
