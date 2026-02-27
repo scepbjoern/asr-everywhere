@@ -56,9 +56,12 @@ class OpenAICompatLLMProvider(LLMProvider):
         effective_api_key = api_key or "sk-dummy"
 
         client = self._get_client(effective_api_key, base_url)
-        system_prompt = build_system_prompt(config.custom_instructions, dictionary)
+        system_prompt = build_system_prompt(
+            config.custom_instructions, dictionary, config.voice_commands_enabled
+        )
 
         logger.info(f"Post-processing text with LLM: {config.model} at {base_url}")
+        logger.info(f"System prompt ({len(system_prompt)} chars): {system_prompt[:500]}...")
 
         try:
             response = client.chat.completions.create(

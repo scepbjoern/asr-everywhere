@@ -634,3 +634,96 @@ class TestLLMRegression:
             assert loaded.llm.enabled is True
             assert loaded.llm.model == "gpt-4o"
             assert loaded.dictionary == ["Kubernetes", "FastAPI"]
+
+
+# ============================================================================
+# Phase 6: Voice Commands, Dictionary Enhancement & Autostart Regression Tests
+# ============================================================================
+
+
+class TestPhase6Regression:
+    """Regression tests for Phase 6 functionality."""
+
+    def test_voice_commands_default_enabled(self, default_config):
+        """Ensure voice commands are enabled by default."""
+        assert default_config.llm.voice_commands_enabled is True
+
+    def test_autostart_default_enabled(self, default_config):
+        """Ensure autostart is enabled by default."""
+        assert default_config.autostart.enabled is True
+
+    def test_voice_commands_in_prompt_when_enabled(self):
+        """Ensure voice commands appear in prompt when enabled."""
+        from asr_everywhere.llm.prompts import build_system_prompt
+
+        prompt = build_system_prompt("", [], voice_commands_enabled=True)
+        assert "Voice Commands" in prompt or "voice command" in prompt.lower()
+
+    def test_voice_commands_not_in_prompt_when_disabled(self):
+        """Ensure voice commands don't appear in prompt when disabled."""
+        from asr_everywhere.llm.prompts import build_system_prompt
+
+        prompt = build_system_prompt("", [], voice_commands_enabled=False)
+        assert "Voice Commands" not in prompt and "voice command" not in prompt.lower()
+
+    def test_autostart_config_is_persisted(self, temp_config_dir, valid_config):
+        """Ensure autostart config is saved and loaded correctly."""
+        valid_config.autostart.enabled = False
+
+        with mock.patch("asr_everywhere.config.get_config_path") as mock_path:
+            config_path = temp_config_dir / "asr-everywhere" / "config.json"
+            mock_path.return_value = config_path
+
+            save_config(valid_config)
+            loaded = load_config()
+
+            assert loaded.autostart.enabled is False
+
+    def test_voice_commands_config_is_persisted(self, temp_config_dir, valid_config):
+        """Ensure voice commands config is saved and loaded correctly."""
+        valid_config.llm.voice_commands_enabled = False
+
+        with mock.patch("asr_everywhere.config.get_config_path") as mock_path:
+            config_path = temp_config_dir / "asr-everywhere" / "config.json"
+            mock_path.return_value = config_path
+
+            save_config(valid_config)
+            loaded = load_config()
+
+            assert loaded.llm.voice_commands_enabled is False
+
+    def test_llm_provider_passes_voice_commands_to_prompt(self):
+        """Ensure LLM provider passes voice_commands_enabled to prompt builder."""
+        from asr_everywhere.config import LLMConfig, ProviderConfig
+        from asr_everywhere.llm.openai_llm import OpenAILLMProvider
+
+        config = LLMConfig(
+            enabled=True,
+            provider="openai",
+            model="gpt-4o-mini",
+            voice_commands_enabled=False,
+            providers={
+                "openai": ProviderConfig(
+                    api_key="test-key",
+                    base_url="https://api.openai.com/v1",
+                )
+            },
+        )
+
+        provider = OpenAILLMProvider()
+
+        with mock.patch("asr_everywhere.llm.openai_llm.OpenAI") as mock_openai:
+            mock_client = mock.MagicMock()
+            mock_openai.return_value = mock_client
+
+            mock_response = mock.MagicMock()
+            mock_response.choices = [mock.MagicMock()]
+            mock_response.choices[0].message.content = "Processed text"
+            mock_client.chat.completions.create.return_value = mock_response
+
+            provider.post_process("test text", config, [])
+
+            # Verify the system prompt was built without voice commands
+            call_args = mock_client.chat.completions.create.call_args
+            system_message = call_args[1]["messages"][0]["content"]
+            assert "Voice Commands" not in system_message

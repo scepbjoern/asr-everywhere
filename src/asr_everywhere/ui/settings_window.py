@@ -9,6 +9,7 @@ from collections.abc import Callable
 from tkinter import messagebox, ttk
 
 from asr_everywhere.audio_recorder import AudioRecorder
+from asr_everywhere.autostart import is_autostart_enabled, is_exe, sync_autostart
 from asr_everywhere.config import Config, save_config
 from asr_everywhere.llm.registry import list_llm_providers
 from asr_everywhere.providers.registry import get_provider_models, list_providers
@@ -49,7 +50,7 @@ class SettingsWindow:
             self._root = tk.Tk()
             self._window = self._root
         self._window.title("ASR Everywhere - Settings")
-        self._window.geometry("550x450")
+        self._window.geometry("550x550")
         self._window.resizable(True, True)
 
         # Bring to front and grab focus
@@ -187,8 +188,34 @@ class SettingsWindow:
         )
         enable_check.grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=5)
 
+        # Voice commands checkbox
+        self._voice_commands_var = tk.BooleanVar(value=self._config.llm.voice_commands_enabled)
+        self._voice_commands_check = ttk.Checkbutton(
+            tab,
+            text="Enable voice commands",
+            variable=self._voice_commands_var,
+            command=self._on_voice_commands_change,
+        )
+        self._voice_commands_check.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=5)
+
+        # Voice commands help/guide
+        voice_commands_help = ttk.LabelFrame(tab, text="Available Voice Commands", padding="5")
+        voice_commands_help.grid(row=2, column=0, columnspan=3, sticky=tk.EW, pady=5)
+
+        commands_text = (
+            '"Neuer Absatz" / "New paragraph" → new paragraph\n'
+            '"Punkt" / "Period" → .\n'
+            '"Komma" / "Comma" → ,\n'
+            '"Fragezeichen" / "Question mark" → ?\n'
+            '"Ausrufezeichen" / "Exclamation mark" → !\n'
+            '"Lösche das" / "Delete that" → remove last sentence'
+        )
+        ttk.Label(voice_commands_help, text=commands_text, foreground="gray", justify=tk.LEFT).pack(
+            anchor=tk.W
+        )
+
         # Provider selection
-        ttk.Label(tab, text="Provider:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        ttk.Label(tab, text="Provider:").grid(row=3, column=0, sticky=tk.W, pady=5)
         self._llm_provider_var = tk.StringVar(value=self._config.llm.provider)
         llm_provider_combo = ttk.Combobox(
             tab,
@@ -197,11 +224,11 @@ class SettingsWindow:
             state="readonly",
             width=25,
         )
-        llm_provider_combo.grid(row=1, column=1, sticky=tk.W, pady=5)
+        llm_provider_combo.grid(row=3, column=1, sticky=tk.W, pady=5)
         llm_provider_combo.bind("<<ComboboxSelected>>", self._on_llm_provider_change)
 
         # Model selection
-        ttk.Label(tab, text="Model:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        ttk.Label(tab, text="Model:").grid(row=4, column=0, sticky=tk.W, pady=5)
         self._llm_model_var = tk.StringVar(value=self._config.llm.model)
         self._llm_model_combo = ttk.Combobox(
             tab,
@@ -209,10 +236,16 @@ class SettingsWindow:
             values=self._get_llm_model_names(self._config.llm.provider),
             width=25,
         )
-        self._llm_model_combo.grid(row=2, column=1, sticky=tk.W, pady=5)
+        self._llm_model_combo.grid(row=4, column=1, sticky=tk.W, pady=5)
+
+        # Model price label
+        self._llm_model_price_label = ttk.Label(tab, text="")
+        self._llm_model_price_label.grid(row=4, column=2, sticky=tk.W, padx=5)
+        self._update_llm_model_price_label()
+        self._llm_model_combo.bind("<<ComboboxSelected>>", self._on_llm_model_change)
 
         # API Key
-        ttk.Label(tab, text="API Key:").grid(row=3, column=0, sticky=tk.W, pady=5)
+        ttk.Label(tab, text="API Key:").grid(row=5, column=0, sticky=tk.W, pady=5)
         self._llm_api_key_var = tk.StringVar(value=self._config.llm.get_api_key())
         self._llm_api_key_entry = ttk.Entry(
             tab,
@@ -220,23 +253,23 @@ class SettingsWindow:
             show="*",
             width=30,
         )
-        self._llm_api_key_entry.grid(row=3, column=1, sticky=tk.W, pady=5)
+        self._llm_api_key_entry.grid(row=5, column=1, sticky=tk.W, pady=5)
 
         # Base URL
-        ttk.Label(tab, text="Base URL:").grid(row=4, column=0, sticky=tk.W, pady=5)
+        ttk.Label(tab, text="Base URL:").grid(row=6, column=0, sticky=tk.W, pady=5)
         self._llm_base_url_var = tk.StringVar(value=self._config.llm.get_base_url())
         self._llm_base_url_entry = ttk.Entry(
             tab,
             textvariable=self._llm_base_url_var,
             width=30,
         )
-        self._llm_base_url_entry.grid(row=4, column=1, sticky=tk.W, pady=5)
+        self._llm_base_url_entry.grid(row=6, column=1, sticky=tk.W, pady=5)
 
         # Custom instructions
-        ttk.Label(tab, text="Custom Instructions:").grid(row=5, column=0, sticky=tk.NW, pady=5)
+        ttk.Label(tab, text="Custom Instructions:").grid(row=7, column=0, sticky=tk.NW, pady=5)
         self._llm_instructions_var = tk.StringVar(value=self._config.llm.custom_instructions)
         instructions_frame = ttk.Frame(tab)
-        instructions_frame.grid(row=5, column=1, columnspan=2, sticky=tk.EW, pady=5)
+        instructions_frame.grid(row=7, column=1, columnspan=2, sticky=tk.EW, pady=5)
         self._llm_instructions_text = tk.Text(instructions_frame, width=40, height=4, wrap=tk.WORD)
         self._llm_instructions_text.pack(fill=tk.BOTH, expand=True)
         if self._config.llm.custom_instructions:
@@ -245,7 +278,7 @@ class SettingsWindow:
         # Help text
         help_text = "LLM cleans up transcriptions: fixes punctuation, removes filler words."
         ttk.Label(tab, text=help_text, foreground="gray").grid(
-            row=6, column=0, columnspan=3, sticky=tk.W, pady=10
+            row=8, column=0, columnspan=3, sticky=tk.W, pady=10
         )
 
         # Update visibility based on enabled state
@@ -329,6 +362,10 @@ class SettingsWindow:
         except Exception:
             return []
 
+    def _on_voice_commands_change(self) -> None:
+        """Handle voice commands checkbox change."""
+        pass  # No status update needed - checkbox shows state
+
     def _on_llm_enabled_change(self) -> None:
         """Handle LLM enabled checkbox change."""
         enabled = self._llm_enabled_var.get()
@@ -340,6 +377,14 @@ class SettingsWindow:
         ]:
             widget.config(state=state)
         self._llm_instructions_text.config(state="normal" if enabled else "disabled")
+
+        # Update voice commands checkbox state
+        if hasattr(self, "_voice_commands_var"):
+            voice_state = "normal" if enabled else "disabled"
+            self._voice_commands_check.config(state=voice_state)
+
+        # Update dictionary warning
+        self._update_dict_warning()
 
     def _on_llm_provider_change(self, event: tk.Event) -> None:
         """Handle LLM provider selection change."""
@@ -358,6 +403,33 @@ class SettingsWindow:
         else:
             self._llm_api_key_var.set("")
             self._llm_base_url_var.set("")
+
+        # Update price label
+        self._update_llm_model_price_label()
+
+    def _on_llm_model_change(self, event: tk.Event) -> None:
+        """Handle LLM model selection change."""
+        self._update_llm_model_price_label()
+
+    def _update_llm_model_price_label(self) -> None:
+        """Update LLM model price label based on selected model."""
+        model_name = self._llm_model_var.get()
+        provider_name = self._llm_provider_var.get()
+        price = None
+
+        # Look up price from config
+        if provider_name in self._config.llm.providers:
+            provider_config = self._config.llm.providers[provider_name]
+            if provider_config.models:
+                for model in provider_config.models:
+                    if model.name == model_name:
+                        price = model.price_per_1m_tokens
+                        break
+
+        if price:
+            self._llm_model_price_label.config(text=f"({price})")
+        else:
+            self._llm_model_price_label.config(text="")
 
     def _add_dictionary_term(self, event: tk.Event | None = None) -> None:
         """Add a new term to the dictionary listbox."""
@@ -514,6 +586,33 @@ class SettingsWindow:
             value="hide",
         ).pack(side=tk.LEFT, padx=10)
 
+        # Autostart toggle (EXE only)
+        self._autostart_frame = ttk.LabelFrame(tab, text="Autostart", padding="5")
+        self._autostart_frame.grid(row=3, column=0, columnspan=3, sticky=tk.EW, pady=15)
+
+        if is_exe():
+            self._autostart_var = tk.BooleanVar(
+                value=self._config.autostart.enabled and is_autostart_enabled()
+            )
+            autostart_check = ttk.Checkbutton(
+                self._autostart_frame,
+                text="Start with Windows",
+                variable=self._autostart_var,
+            )
+            autostart_check.pack(anchor=tk.W)
+            ttk.Label(
+                self._autostart_frame,
+                text="Automatically launch ASR Everywhere when you log in.",
+                foreground="gray",
+            ).pack(anchor=tk.W)
+        else:
+            self._autostart_var = None
+            ttk.Label(
+                self._autostart_frame,
+                text="Autostart is only available in the standalone EXE version.",
+                foreground="gray",
+            ).pack(anchor=tk.W)
+
     def _create_buttons(self) -> None:
         """Create Save and Cancel buttons."""
         button_frame = ttk.Frame(self._main_frame)
@@ -581,12 +680,37 @@ class SettingsWindow:
         logger.debug(f"Provider changed to: {provider}")
 
     def _update_dict_warning(self) -> None:
-        """Update dictionary support warning based on current ASR provider."""
-        provider = self._config.asr.provider
+        """Update dictionary support warning based on current ASR provider and LLM state."""
+        # Check if UI elements are ready
+        if not hasattr(self, "_dict_warning_label"):
+            return
+
+        provider = (
+            self._provider_var.get()
+            if hasattr(self, "_provider_var")
+            else self._config.asr.provider
+        )
+        llm_enabled = (
+            self._llm_enabled_var.get()
+            if hasattr(self, "_llm_enabled_var")
+            else self._config.llm.enabled
+        )
+        dictionary_count = (
+            self._dict_listbox.size()
+            if hasattr(self, "_dict_listbox")
+            else len(self._config.dictionary)
+        )
+
         # Providers that don't support dictionary/prompt parameter in ASR
         unsupported_providers = {"together", "huggingface"}
 
-        if provider in unsupported_providers:
+        # Show warning if: dictionary has entries AND LLM disabled AND provider doesn't support prompt
+        if dictionary_count > 0 and not llm_enabled and provider in unsupported_providers:
+            self._dict_warning_label.config(
+                text="⚠️ Dictionary terms require LLM post-processing for this provider. "
+                "Enable LLM post-processing to use dictionary terms."
+            )
+        elif provider in unsupported_providers:
             self._dict_warning_label.config(
                 text=f"⚠️ {provider.capitalize()} ASR does not support dictionary terms for spelling hints."
             )
@@ -743,6 +867,7 @@ class SettingsWindow:
         self._config.llm.custom_instructions = self._llm_instructions_text.get(
             "1.0", tk.END
         ).strip()
+        self._config.llm.voice_commands_enabled = self._voice_commands_var.get()
 
         # Update LLM provider-specific config
         llm_provider = self._config.llm.provider
@@ -772,6 +897,14 @@ class SettingsWindow:
 
         # Update notification config
         self._config.show_notification = self._notification_var.get() == "show"
+
+        # Update autostart config
+        if self._autostart_var is not None:
+            autostart_enabled = self._autostart_var.get()
+            self._config.autostart.enabled = autostart_enabled
+            # Sync with Windows registry
+            if not sync_autostart(autostart_enabled):
+                logger.warning("Failed to sync autostart with registry")
 
         # Save config
         save_config(self._config)
@@ -812,6 +945,8 @@ class SettingsWindow:
             "_llm_api_key_var",
             "_llm_base_url_var",
             "_llm_instructions_var",
+            "_voice_commands_var",
+            "_autostart_var",
             "_new_term_var",
         ]:
             if hasattr(self, var_name):

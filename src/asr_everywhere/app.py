@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 import keyboard
 
 from asr_everywhere.audio_recorder import AudioRecorder
+from asr_everywhere.autostart import is_exe, sync_autostart
 from asr_everywhere.config import Config, load_config, save_config
 from asr_everywhere.hotkey_manager import HotkeyManager
 from asr_everywhere.text_inserter import TextInserter
@@ -80,6 +81,12 @@ class ASREverywhereApp:
 
             # Link tray to pipeline
             self._pipeline._tray = self._tray
+
+            # Sync autostart with registry (EXE only)
+            if is_exe():
+                registry_state = sync_autostart(self._config.autostart.enabled)
+                if not registry_state:
+                    logger.warning("Failed to sync autostart with registry")
 
             # Register hotkey based on mode
             if self._config.hotkey.mode == "push_to_talk":

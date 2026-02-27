@@ -80,6 +80,7 @@ class LLMConfig:
     provider: str = "openai"
     model: str = "gpt-4o-mini"
     custom_instructions: str = ""
+    voice_commands_enabled: bool = True
     providers: dict[str, ProviderConfig] = field(default_factory=dict)
 
     def get_api_key(self) -> str:
@@ -96,6 +97,13 @@ class LLMConfig:
 
 
 @dataclass
+class AutostartConfig:
+    """Autostart configuration."""
+
+    enabled: bool = True
+
+
+@dataclass
 class Config:
     """Main configuration container."""
 
@@ -107,6 +115,7 @@ class Config:
     audio: AudioConfig = field(default_factory=AudioConfig)
     clipboard_restore: bool = True
     show_notification: bool = True  # Show notification after successful transcription
+    autostart: AutostartConfig = field(default_factory=AutostartConfig)
 
 
 def get_config_path() -> Path:
@@ -253,6 +262,12 @@ def load_config() -> Config:
         if not llm_providers:
             llm_providers = _get_default_llm_providers()
 
+        # Parse autostart config
+        autostart_data = data.get("autostart", {})
+        autostart = AutostartConfig(
+            enabled=autostart_data.get("enabled", True),
+        )
+
         config = Config(
             version=data.get("version", CONFIG_VERSION),
             hotkey=HotkeyConfig(**data.get("hotkey", {})),
@@ -269,12 +284,14 @@ def load_config() -> Config:
                 provider=data.get("llm", {}).get("provider", "openai"),
                 model=data.get("llm", {}).get("model", "gpt-4o-mini"),
                 custom_instructions=data.get("llm", {}).get("custom_instructions", ""),
+                voice_commands_enabled=data.get("llm", {}).get("voice_commands_enabled", True),
                 providers=llm_providers,
             ),
             dictionary=data.get("dictionary", []),
             audio=AudioConfig(**data.get("audio", {})),
             clipboard_restore=data.get("clipboard_restore", True),
             show_notification=data.get("show_notification", True),
+            autostart=autostart,
         )
         logger.info(f"Loaded config from {config_path}")
         return config

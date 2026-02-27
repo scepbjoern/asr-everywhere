@@ -53,9 +53,12 @@ class OpenAILLMProvider(LLMProvider):
             raise ValueError("No API key configured for OpenAI LLM")
 
         client = self._get_client(api_key, base_url)
-        system_prompt = build_system_prompt(config.custom_instructions, dictionary)
+        system_prompt = build_system_prompt(
+            config.custom_instructions, dictionary, config.voice_commands_enabled
+        )
 
         logger.info(f"Post-processing text with OpenAI LLM: {config.model}")
+        logger.info(f"System prompt ({len(system_prompt)} chars): {system_prompt[:500]}...")
 
         try:
             if config.model.startswith("gpt-5"):
