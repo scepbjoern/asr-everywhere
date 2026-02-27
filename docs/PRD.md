@@ -581,6 +581,32 @@ A user can install the application via `pip install`, configure an ASR provider 
 
 **Estimated effort:** 1 week
 
+### Phase 5: EXE Packaging & Windows Integration
+**Goal:** Create standalone Windows application with Start Menu integration.
+
+**Deliverables:**
+- ⬜ PyInstaller spec file for single-file EXE build
+- ⬜ Build script (`scripts/build_exe.py`)
+- ⬜ Inno Setup installer script (`installer/setup.iss`)
+- ⬜ Windows Start Menu shortcut
+- ⬜ Optional Desktop shortcut
+- ⬜ GitHub Actions workflow for automated releases
+- ⬜ Clean uninstall (remove all files)
+
+**Technical Details:**
+- PyInstaller bundles Python interpreter and all dependencies into single EXE
+- No Python installation required for end users
+- Inno Setup creates professional Windows installer
+- Code signing optional (requires certificate)
+
+**Validation:**
+- EXE runs on Windows 10/11 without Python installed
+- All features work (tray, settings, transcription)
+- Start Menu entry created by installer
+- Desktop shortcut optional during install
+
+**Estimated effort:** 1 week
+
 ---
 
 ## 13. Future Considerations
@@ -588,7 +614,7 @@ A user can install the application via `pip install`, configure an ASR provider 
 ### Post-MVP Enhancements
 - **Real-time Streaming Transcription** — Show partial text as user speaks (requires WebSocket-based ASR providers like Deepgram or local streaming Whisper).
 - **Transcription History** — Searchable log of past dictations with timestamps.
-- **Standalone .exe** — Package via PyInstaller/Nuitka for users who don't want Python installed.
+- ~~**Standalone .exe** — Package via PyInstaller/Nuitka for users who don't want Python installed.~~ ✅ Moved to Phase 5
 - **Autostart with Windows** — Option to launch at login via registry/startup folder.
 - **Encrypted API Key Storage** — Use Windows Credential Manager for secure key storage.
 
