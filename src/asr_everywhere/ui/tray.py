@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+import sys
 import threading
 from collections.abc import Callable
 from enum import Enum
+from pathlib import Path
 
 import pystray
 from PIL import Image, ImageDraw
@@ -57,12 +59,70 @@ class TrayIcon:
         self._icon: pystray.Icon | None = None
         self._thread: threading.Thread | None = None
 
-        # Create icons for each state
+        # Create icons for each state (try loading from files, fallback to generated)
         self._icons = {
-            TrayState.IDLE: self._create_icon("#4CAF50"),  # Green
-            TrayState.RECORDING: self._create_icon("#F44336"),  # Red
-            TrayState.PROCESSING: self._create_icon("#FF9800"),  # Orange
+            TrayState.IDLE: self._load_or_create_icon("icon_idle.ico", "#4CAF50"),  # Green
+            TrayState.RECORDING: self._load_or_create_icon("icon_recording.ico", "#F44336"),  # Red
+            TrayState.PROCESSING: self._load_or_create_icon(
+                "icon_processing.ico", "#FF9800"
+            ),  # Orange
         }
+
+    def _get_assets_dir(self) -> Path | None:
+        """Find the assets directory.
+
+        Returns:
+            Path to assets directory or None if not found
+        """
+        # Try different locations for assets
+        locations = []
+
+        # When running from source
+        if "site-packages" not in __file__:
+            # Development mode - look for assets relative to this file
+            dev_assets = Path(__file__).parent.parent.parent.parent / "assets"
+            locations.append(dev_assets)
+
+        # When installed via pip
+        # Look relative to the package
+        package_assets = Path(__file__).parent.parent.parent.parent / "assets"
+        locations.append(package_assets)
+
+        # Try sys.prefix for installed packages
+        if sys.prefix:
+            sys_assets = Path(sys.prefix) / "share" / "asr-everywhere" / "assets"
+            locations.append(sys_assets)
+
+        for loc in locations:
+            if loc.exists() and loc.is_dir():
+                return loc
+
+        return None
+
+    def _load_or_create_icon(self, filename: str, fallback_color: str) -> Image.Image:
+        """Load icon from file or create a fallback.
+
+        Args:
+            filename: Icon filename (e.g., "icon_idle.ico")
+            fallback_color: Hex color for fallback icon
+
+        Returns:
+            PIL Image
+        """
+        assets_dir = self._get_assets_dir()
+
+        if assets_dir:
+            icon_path = assets_dir / filename
+            if icon_path.exists():
+                try:
+                    logger.info(f"Loading icon from {icon_path}")
+                    return Image.open(icon_path)
+                except Exception as e:
+                    logger.warning(f"Failed to load icon {icon_path}: {e}")
+
+        # Fallback to generated icon
+        logger.debug(f"Using generated icon with color {fallback_color}")
+        return self._create_icon(fallback_color)
 
     def _create_icon(self, color: str) -> Image.Image:
         """Create a simple colored circle icon.

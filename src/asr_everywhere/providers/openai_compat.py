@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from openai import OpenAI
 
+from asr_everywhere.errors import ConfigError, categorize_openai_error
 from asr_everywhere.providers.base import ASRProvider, TranscriptionResult
 
 if TYPE_CHECKING:
@@ -36,13 +37,20 @@ class OpenAICompatProvider(ASRProvider):
         self._client: OpenAI | None = None
 
     def _get_client(self, config: ASRConfig) -> OpenAI:
-        """Get or create OpenAI client with provider-specific base_url."""
+        """Get or create OpenAI client with provider-specific base_url.
+
+        Raises:
+            ConfigError: If API key is not configured for non-local providers
+        """
         if self._client is None:
             api_key = config.get_api_key()
             base_url = config.get_base_url()
 
             if not api_key and "localhost" not in base_url:
-                raise ValueError(f"{self._provider_name} API key not configured")
+                raise ConfigError(
+                    f"{self._provider_name} API key not configured",
+                    "No API key configured. Open Settings and add your API key.",
+                )
 
             self._client = OpenAI(
                 api_key=api_key or "not-needed",  # Some local APIs don't need key
@@ -100,7 +108,8 @@ class OpenAICompatProvider(ASRProvider):
             )
         except Exception as e:
             logger.error(f"{self._provider_name} transcription failed: {e}")
-            raise
+            # Categorize the error and re-raise as appropriate type
+            raise categorize_openai_error(e) from e
 
     def list_models(self) -> list[str]:
         """Return available models for this provider."""

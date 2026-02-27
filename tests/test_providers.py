@@ -48,10 +48,12 @@ def test_transcribe_success(asr_config):
 
 def test_transcribe_missing_api_key():
     """Test transcription fails without API key."""
+    from asr_everywhere.errors import ConfigError
+
     provider = OpenAIProvider()
     config = ASRConfig(api_key="")
 
-    with pytest.raises(ValueError, match="API key"):
+    with pytest.raises(ConfigError, match="API key"):
         provider.transcribe(b"audio", config)
 
 

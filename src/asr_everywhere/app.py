@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import keyboard
 
 from asr_everywhere.audio_recorder import AudioRecorder
-from asr_everywhere.config import Config, load_config
+from asr_everywhere.config import Config, load_config, save_config
 from asr_everywhere.hotkey_manager import HotkeyManager
 from asr_everywhere.text_inserter import TextInserter
 from asr_everywhere.transcription_pipeline import TranscriptionPipeline
@@ -95,6 +95,21 @@ class ASREverywhereApp:
                 )
 
             logger.info("Application initialized successfully")
+
+            # Check microphone availability (non-blocking warning)
+            if not AudioRecorder.check_microphone_available():
+                logger.warning("No microphone detected")
+                # Delay notification until tray is running
+                import threading
+
+                def show_mic_warning():
+                    self._tray.show_notification(
+                        "Microphone Warning",
+                        "No microphone found. Connect a microphone and restart.",
+                    )
+
+                threading.Timer(1.0, show_mic_warning).start()
+
             return True
 
         except Exception as e:

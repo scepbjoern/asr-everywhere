@@ -8,8 +8,8 @@ import pytest
 
 from asr_everywhere.config import LLMConfig, ProviderConfig
 from asr_everywhere.llm.base import PostProcessResult
-from asr_everywhere.llm.openai_llm import OpenAILLMProvider
 from asr_everywhere.llm.openai_compat_llm import OpenAICompatLLMProvider
+from asr_everywhere.llm.openai_llm import OpenAILLMProvider
 from asr_everywhere.llm.registry import get_llm_provider, list_llm_providers
 
 

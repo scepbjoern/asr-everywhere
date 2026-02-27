@@ -616,9 +616,7 @@ class TestLLMRegression:
             assert "prompt" in call_kwargs
             assert "Kubernetes" in call_kwargs["prompt"]
 
-    def test_config_serialization_includes_llm_and_dictionary(
-        self, temp_config_dir, valid_config
-    ):
+    def test_config_serialization_includes_llm_and_dictionary(self, temp_config_dir, valid_config):
         """Config serialization must include LLM and dictionary fields."""
         from asr_everywhere.config import load_config, save_config
 

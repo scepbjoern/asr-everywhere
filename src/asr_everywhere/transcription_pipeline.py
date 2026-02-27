@@ -6,6 +6,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from asr_everywhere.audio_recorder import AudioRecorder
+from asr_everywhere.errors import ASREverywhereError, get_user_message
 from asr_everywhere.llm.post_processor import PostProcessor
 from asr_everywhere.providers.registry import get_provider
 from asr_everywhere.text_inserter import TextInserter
@@ -53,7 +54,11 @@ class TranscriptionPipeline:
             self.start_recording()
 
     def start_recording(self) -> None:
-        """Start audio recording."""
+        """Start audio recording.
+
+        Raises:
+            AudioError: If microphone is not available
+        """
         from asr_everywhere.ui.tray import TrayState
 
         if self._processing:
@@ -61,8 +66,13 @@ class TranscriptionPipeline:
             return
 
         if not self._recorder.is_recording:
-            self._tray.set_state(TrayState.RECORDING)
-            self._recorder.start_recording()
+            try:
+                self._tray.set_state(TrayState.RECORDING)
+                self._recorder.start_recording()
+            except ASREverywhereError as e:
+                self._tray.set_state(TrayState.IDLE)
+                self._tray.show_notification("Recording Error", e.user_message)
+                logger.error(f"Failed to start recording: {e}")
 
     def stop_and_transcribe(self) -> None:
         """Stop recording and process audio."""
@@ -101,6 +111,13 @@ class TranscriptionPipeline:
                         processor = PostProcessor(self._config)
                         text = processor.process(text)
                         logger.info("LLM post-processing complete")
+                    except ASREverywhereError as e:
+                        logger.error(f"LLM post-processing failed: {e}")
+                        # Graceful degradation: use raw transcription
+                        self._tray.show_notification(
+                            "LLM Error",
+                            e.user_message,
+                        )
                     except Exception as e:
                         logger.error(f"LLM post-processing failed: {e}")
                         # Graceful degradation: use raw transcription
@@ -132,10 +149,13 @@ class TranscriptionPipeline:
                     "No text returned from ASR",
                 )
 
+        except ASREverywhereError as e:
+            logger.error(f"Transcription pipeline error: {e}")
+            self._tray.show_notification("Error", e.user_message)
         except Exception as e:
             logger.error(f"Transcription pipeline error: {e}")
-            # Truncate error message to avoid pystray notification limit (256 chars)
-            error_msg = str(e)[:200]
+            # Get user-friendly message
+            error_msg = get_user_message(e)
             self._tray.show_notification("Error", error_msg)
 
         finally:

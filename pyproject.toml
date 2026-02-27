@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = ["speech-to-text", "dictation", "asr", "windows", "voice"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Environment :: Win32 (MS Windows)",
     "Intended Audience :: End Users/Desktop",
     "License :: OSI Approved :: MIT License",
@@ -25,6 +25,11 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Multimedia :: Sound/Audio :: Speech",
 ]
+
+[project.urls]
+Homepage = "https://github.com/scepbjoern/asr-everywhere"
+Repository = "https://github.com/scepbjoern/asr-everywhere"
+Issues = "https://github.com/scepbjoern/asr-everywhere/issues"
 
 dependencies = [
     "sounddevice>=0.4",
@@ -54,6 +59,9 @@ asr-everywhere-gui = "asr_everywhere.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+asr_everywhere = ["../../assets/*.ico"]
 
 [tool.ruff]
 target-version = "py311"

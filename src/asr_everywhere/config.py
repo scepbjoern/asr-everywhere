@@ -30,7 +30,6 @@ class ModelConfig:
     price_per_1m_tokens: str = ""  # e.g. "2.25 USD" (per 1M input+output tokens)
 
 
-
 @dataclass
 class ProviderConfig:
     """Configuration for a specific ASR provider."""
@@ -143,7 +142,8 @@ def _get_default_providers() -> dict[str, ProviderConfig]:
             base_url="https://router.huggingface.co/hf-inference",
             models=[
                 ModelConfig(
-                    name="openai/whisper-large-v3-turbo", price_per_1m_tokens="in Plus-Plan enthalten"
+                    name="openai/whisper-large-v3-turbo",
+                    price_per_1m_tokens="in Plus-Plan enthalten",
                 ),
                 ModelConfig(
                     name="openai/whisper-large-v3", price_per_1m_tokens="in Plus-Plan enthalten"
@@ -174,10 +174,15 @@ def _get_default_llm_providers() -> dict[str, ProviderConfig]:
             api_key="",
             base_url="https://api.together.xyz/v1",
             models=[
-                ModelConfig(name="meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8", price_per_1m_tokens="1.12 USD"),
+                ModelConfig(
+                    name="meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
+                    price_per_1m_tokens="1.12 USD",
+                ),
                 ModelConfig(name="google/gemma-3n-E4B-it", price_per_1m_tokens="0.06 USD"),
                 ModelConfig(name="Qwen/Qwen2.5-7B-Instruct-Turbo", price_per_1m_tokens="0.30 USD"),
-                ModelConfig(name="mistralai/Mistral-Small-24B-Instruct-2501", price_per_1m_tokens="0.40 USD"),
+                ModelConfig(
+                    name="mistralai/Mistral-Small-24B-Instruct-2501", price_per_1m_tokens="0.40 USD"
+                ),
             ],
         ),
         "huggingface": ProviderConfig(
@@ -185,7 +190,10 @@ def _get_default_llm_providers() -> dict[str, ProviderConfig]:
             base_url="https://router.huggingface.co/v1",
             models=[
                 ModelConfig(name="Qwen/Qwen3-4B-Instruct-2507", price_per_1m_tokens="0.04 USD"),
-                ModelConfig(name="meta-llama/Llama-4-Scout-17B-16E-Instruct:nscale", price_per_1m_tokens="0.38 USD"),
+                ModelConfig(
+                    name="meta-llama/Llama-4-Scout-17B-16E-Instruct:nscale",
+                    price_per_1m_tokens="0.38 USD",
+                ),
             ],
         ),
         "local": ProviderConfig(

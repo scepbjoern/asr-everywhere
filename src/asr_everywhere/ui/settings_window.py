@@ -311,9 +311,7 @@ class SettingsWindow:
             text="",
             foreground="orange",
         )
-        self._dict_warning_label.grid(
-            row=5, column=0, columnspan=3, sticky=tk.W, pady=5
-        )
+        self._dict_warning_label.grid(row=5, column=0, columnspan=3, sticky=tk.W, pady=5)
         self._update_dict_warning()
 
     def _get_llm_model_names(self, provider_name: str) -> list[str]:

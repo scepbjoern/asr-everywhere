@@ -12,6 +12,8 @@ import numpy as np
 import sounddevice as sd
 import soundfile as sf
 
+from asr_everywhere.errors import AudioError
+
 if TYPE_CHECKING:
     from asr_everywhere.config import AudioConfig
 
@@ -47,7 +49,11 @@ class AudioRecorder:
             self._queue.put(indata.copy())
 
     def start_recording(self) -> None:
-        """Start recording audio."""
+        """Start recording audio.
+
+        Raises:
+            AudioError: If microphone is not available or access is denied
+        """
         with self._lock:
             if self._recording:
                 logger.warning("Already recording")
@@ -64,15 +70,33 @@ class AudioRecorder:
                     break
 
             # Create and start stream
-            self._stream = sd.InputStream(
-                samplerate=self._config.sample_rate,
-                device=self._config.device,
-                channels=self._config.channels,
-                dtype="float32",
-                callback=self._callback,
-            )
-            self._stream.start()
-            logger.info("Audio stream started")
+            try:
+                self._stream = sd.InputStream(
+                    samplerate=self._config.sample_rate,
+                    device=self._config.device,
+                    channels=self._config.channels,
+                    dtype="float32",
+                    callback=self._callback,
+                )
+                self._stream.start()
+                logger.info("Audio stream started")
+            except sd.PortAudioError as e:
+                self._recording = False
+                error_msg = str(e).lower()
+                if "no device" in error_msg or "device" in error_msg:
+                    raise AudioError(
+                        str(e),
+                        "No microphone found. Connect a microphone and restart.",
+                    ) from e
+                if "access" in error_msg or "permission" in error_msg:
+                    raise AudioError(
+                        str(e),
+                        "Microphone access denied. Check Windows privacy settings.",
+                    ) from e
+                raise AudioError(
+                    str(e),
+                    "Microphone error. Check your audio device settings.",
+                ) from e
 
     def stop_recording(self) -> bytes:
         """Stop recording and return audio as WAV bytes.
@@ -129,6 +153,19 @@ class AudioRecorder:
     def is_recording(self) -> bool:
         """Check if currently recording."""
         return self._recording
+
+    @staticmethod
+    def check_microphone_available() -> bool:
+        """Check if a microphone is available.
+
+        Returns:
+            True if at least one input device is available
+        """
+        try:
+            devices = sd.query_devices()
+            return any(dev["max_input_channels"] > 0 for dev in devices)
+        except sd.PortAudioError:
+            return False
 
     @staticmethod
     def list_devices() -> list[dict]:

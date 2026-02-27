@@ -5,6 +5,7 @@ from unittest import mock
 import pytest
 
 from asr_everywhere.config import ASRConfig, ProviderConfig
+from asr_everywhere.errors import ConfigError
 from asr_everywhere.providers.openai_compat import OpenAICompatProvider
 
 
@@ -90,7 +91,7 @@ def test_compat_provider_local_no_key():
 
 
 def test_compat_provider_missing_key_raises():
-    """Test that missing API key raises error for non-local providers."""
+    """Test that missing API key raises ConfigError."""
     config = ASRConfig(
         provider="together",
         model="whisper-1",
@@ -104,7 +105,7 @@ def test_compat_provider_missing_key_raises():
 
     provider = OpenAICompatProvider("together")
 
-    with pytest.raises(ValueError, match="together API key not configured"):
+    with pytest.raises(ConfigError, match="together API key not configured"):
         provider.transcribe(b"audio", config)
 
 

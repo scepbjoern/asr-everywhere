@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from openai import OpenAI
 
+from asr_everywhere.errors import ConfigError, categorize_openai_error
 from asr_everywhere.providers.base import ASRProvider, TranscriptionResult
 
 if TYPE_CHECKING:
@@ -27,10 +28,17 @@ class OpenAIProvider(ASRProvider):
         self._client: OpenAI | None = None
 
     def _get_client(self, config: ASRConfig) -> OpenAI:
-        """Get or create OpenAI client."""
+        """Get or create OpenAI client.
+
+        Raises:
+            ConfigError: If API key is not configured
+        """
         if self._client is None:
             if not config.api_key:
-                raise ValueError("OpenAI API key not configured")
+                raise ConfigError(
+                    "OpenAI API key not configured",
+                    "No API key configured. Open Settings and add your API key.",
+                )
             self._client = OpenAI(
                 api_key=config.api_key,
                 base_url=config.base_url,
@@ -77,7 +85,8 @@ class OpenAIProvider(ASRProvider):
             )
         except Exception as e:
             logger.error(f"OpenAI transcription failed: {e}")
-            raise
+            # Categorize the error and re-raise as appropriate type
+            raise categorize_openai_error(e) from e
 
     def list_models(self) -> list[str]:
         """Return available OpenAI transcription models."""
