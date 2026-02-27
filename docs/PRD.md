@@ -88,6 +88,9 @@ The application supports multiple ASR backends — including cloud inference pro
 - ✅ Configurable model list per provider with price per audio hour
 - ✅ Current model and price displayed in tray menu
 - ✅ Optional notification after successful transcription (configurable)
+- ✅ Standalone EXE packaging with PyInstaller (Phase 5)
+- ✅ Windows Start Menu integration (Phase 5)
+- ✅ Desktop shortcut option (Phase 5)
 
 ### Out of Scope (Future)
 - ❌ History / transcription log
@@ -95,8 +98,8 @@ The application supports multiple ASR backends — including cloud inference pro
 - ❌ Replacements engine (regex-based find/replace)
 - ❌ Real-time streaming transcription (optional future enhancement if simple to add)
 - ❌ Encrypted API key storage (Windows Credential Manager)
-- ❌ MSI installer / standalone .exe packaging
-- ❌ Autostart with Windows (user can configure manually)
+- ❌ MSI installer (EXE with PyInstaller is sufficient)
+- ❌ Autostart with Windows (user can configure manually via Task Scheduler)
 - ❌ Offline-only mode
 - ❌ macOS / Linux support
 - ❌ Multi-language beyond DE/EN
